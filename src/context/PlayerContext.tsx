@@ -42,6 +42,12 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     stateRef.current = { repeatMode, isShuffle, queue };
   }, [repeatMode, isShuffle, queue]);
 
+  // Load default starting volume from Settings if configured
+  useEffect(() => {
+    const savedVol = localStorage.getItem('sys_default_volume');
+    if (savedVol) setVolumeState(parseFloat(savedVol));
+  }, []);
+
   const safePlay = () => {
     if (!audioRef.current) return;
     const playPromise = audioRef.current.play();
@@ -63,13 +69,7 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       const nextIndex = shuf ? Math.floor(Math.random() * q.length) : 0;
       const next = q[nextIndex];
       setQueue(q.filter((_, idx) => idx !== nextIndex));
-      if (audioRef.current) {
-        audioRef.current.src = next.audioUrl;
-        audioRef.current.volume = volume;
-        safePlay();
-        setCurrentTrack(next);
-        setIsPlaying(true);
-      }
+      playTrack(next);
     } else {
       setIsPlaying(false);
     }
@@ -90,6 +90,25 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   const playTrack = (track: Track, newQueue: Track[] = []) => {
     if (!audioRef.current) return;
+
+    // FIX 2: Check & enforce Daily Stream Limits based on user subscription tier
+    const storedUser = localStorage.getItem('auth_user');
+    if (storedUser) {
+      const u = JSON.parse(storedUser);
+      const maxLimit = u.tier === 'BASIC' ? 60 : u.tier === 'SILVER' ? 100 : 999999;
+      
+      if ((u.dailyStreams || 0) >= maxLimit) {
+        alert(`⛔ Daily Stream Limit Reached (${maxLimit}/${maxLimit})!\n\nYour ${u.tier} subscription restricts daily playback. Please upgrade to Silver or Gold VIP in Settings for unlimited listening.`);
+        return;
+      }
+
+      // Increment daily stream counter
+      u.dailyStreams = (u.dailyStreams || 0) + 1;
+      localStorage.setItem('auth_user', JSON.stringify(u));
+      const users = JSON.parse(localStorage.getItem('db_users') || '[]');
+      localStorage.setItem('db_users', JSON.stringify(users.map((item: any) => item.id === u.id ? u : item)));
+    }
+
     if (newQueue.length) setQueue(newQueue);
     audioRef.current.src = track.audioUrl;
     audioRef.current.volume = volume;

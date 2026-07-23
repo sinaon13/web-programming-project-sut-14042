@@ -1,6 +1,7 @@
+
 'use client';
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { User, Role } from '@/lib/types';
+import { User, Role, AppNotification } from '@/lib/types';
 import { getDB, setDB, initDB } from '@/lib/mockData';
 import { useRouter } from 'next/navigation';
 
@@ -38,7 +39,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const logout = () => {
     setCurrentUser(null);
     localStorage.removeItem('auth_user');
-    router.push('/login'); // FIX: Redirects directly to login page upon logout
+    router.push('/login');
   };
 
   const register = (name: string, email: string, role: Role, birthDate?: string, gender?: 'MALE' | 'FEMALE' | 'OTHER', portfolioUrl?: string) => {
@@ -62,6 +63,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setDB('db_users', users);
     setCurrentUser(newUser);
     setDB('auth_user', newUser);
+
+    // FIX 5: Automatically generate Admin notification upon new Artist registration
+    if (role === 'ARTIST') {
+      const notifs = getDB<AppNotification[]>('db_notifications', []);
+      const adminNotif: AppNotification = {
+        id: 'n_' + Date.now(),
+        userId: 'admin_support', // Targeted to ADMIN and SUPPORT roles
+        title: '🔔 New Artist Application Pending',
+        message: `${name} (${email}) applied for verification. Sample: ${portfolioUrl || 'None'}`,
+        isRead: false,
+        timestamp: 'Just now',
+        targetUrl: '/admin'
+      };
+      setDB('db_notifications', [adminNotif, ...notifs]);
+    }
   };
 
   const updateUser = (updated: Partial<User>) => {

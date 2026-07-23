@@ -3,7 +3,8 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { usePlayer } from '@/context/PlayerContext';
 import { getDB } from '@/lib/mockData';
-import { Track, Album } from '@/lib/types';
+import { Track, Album, Playlist } from '@/lib/types';
+import { DownloadButton } from '@/components/ui/DownloadButton';
 import Link from 'next/link';
 
 export default function HomePage() {
@@ -11,10 +12,17 @@ export default function HomePage() {
   const { playTrack } = usePlayer();
   const [tracks, setTracks] = useState<Track[]>([]);
   const [albums, setAlbums] = useState<Album[]>([]);
+  const [recentPlaylists, setRecentPlaylists] = useState<Playlist[]>([]);
 
   useEffect(() => {
     setTracks(getDB<Track[]>('db_tracks', []));
     setAlbums(getDB<Album[]>('db_albums', []));
+    
+    // FIX 3: Load recently played playlists from LocalStorage
+    const allPl = getDB<Playlist[]>('db_playlists', []);
+    const recentIds = getDB<string[]>('db_recent_playlists', []);
+    const foundRecent = recentIds.map(id => allPl.find(p => p.id === id)).filter(Boolean) as Playlist[];
+    setRecentPlaylists(foundRecent.length > 0 ? foundRecent : allPl.slice(0, 3));
   }, []);
 
   if (!currentUser) return <div className="text-center py-12"><Link href="/login" className="text-green-400 font-bold underline">Log in to continue</Link></div>;
@@ -22,12 +30,39 @@ export default function HomePage() {
   const standardTracks = tracks.filter(t => !t.isEarlyAccess);
   const earlyAccessTracks = tracks.filter(t => t.isEarlyAccess);
 
+  const handlePlaylistClick = (pl: Playlist) => {
+    const recent = getDB<string[]>('db_recent_playlists', []);
+    const updated = [pl.id, ...recent.filter(id => id !== pl.id)].slice(0, 6);
+    localStorage.setItem('db_recent_playlists', JSON.stringify(updated));
+  };
+
   return (
     <div className="space-y-8">
       <div>
         <h1 className="text-2xl font-bold text-white mb-1">Welcome back, {currentUser.name}</h1>
         <p className="text-xs text-neutral-400">Discover top trending albums and tracks on the platform.</p>
       </div>
+
+      {/* FIX 3: Recently Played Playlists Showcase (Section 2.2 Requirement) */}
+      {recentPlaylists.length > 0 && (
+        <div>
+          <h2 className="text-lg font-bold text-white mb-4 flex items-center gap-2">🎧 Recently Played Playlists</h2>
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+            {recentPlaylists.map(pl => (
+              <Link
+                key={pl.id}
+                href="/playlists"
+                onClick={() => handlePlaylistClick(pl)}
+                className="bg-gradient-to-br from-neutral-800 to-neutral-900 border border-neutral-700/60 p-4 rounded-xl hover:border-green-500/50 transition block group shadow-md"
+              >
+                <div className="w-10 h-10 bg-green-500/20 rounded-lg flex items-center justify-center text-green-400 font-bold mb-3 group-hover:scale-110 transition">🎵</div>
+                <h4 className="text-sm font-bold text-white truncate group-hover:text-green-400">{pl.name}</h4>
+                <span className="text-xs text-neutral-400 block mt-1">{pl.trackIds.length} tracks</span>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
 
       {currentUser.tier === 'GOLD' && earlyAccessTracks.length > 0 && (
         <div className="p-6 bg-gradient-to-r from-amber-500/20 to-neutral-900 border border-amber-500/40 rounded-xl shadow-lg">
@@ -42,7 +77,10 @@ export default function HomePage() {
                     <Link href={`/artist/${track.artistId}`} className="text-xs text-amber-300 hover:underline block">{track.artistName}</Link>
                   </div>
                 </div>
-                <button onClick={() => playTrack(track, tracks)} className="px-4 py-1.5 bg-amber-400 text-black font-bold text-xs rounded-full hover:bg-amber-300 shadow">Play VIP</button>
+                <div className="flex items-center space-x-2">
+                  <DownloadButton track={track} />
+                  <button onClick={() => playTrack(track, tracks)} className="px-4 py-1.5 bg-amber-400 text-black font-bold text-xs rounded-full hover:bg-amber-300 shadow">Play VIP</button>
+                </div>
               </div>
             ))}
           </div>
@@ -56,8 +94,13 @@ export default function HomePage() {
             <div key={track.id} className="bg-neutral-900 border border-neutral-800 p-3 rounded-xl hover:border-neutral-700 transition flex flex-col justify-between">
               <div>
                 <img src={track.coverUrl} className="w-full aspect-square rounded-lg object-cover mb-3" />
-                <h4 className="text-sm font-bold text-white truncate">{track.title}</h4>
-                <Link href={`/artist/${track.artistId}`} className="text-xs text-neutral-400 hover:text-white hover:underline block truncate mt-0.5">{track.artistName}</Link>
+                <div className="flex justify-between items-start">
+                  <div className="truncate pr-2">
+                    <h4 className="text-sm font-bold text-white truncate">{track.title}</h4>
+                    <Link href={`/artist/${track.artistId}`} className="text-xs text-neutral-400 hover:text-white hover:underline block truncate mt-0.5">{track.artistName}</Link>
+                  </div>
+                  <DownloadButton track={track} />
+                </div>
               </div>
               <button onClick={() => playTrack(track, tracks)} className="w-full mt-3 py-1.5 bg-green-500/20 hover:bg-green-500 text-green-400 hover:text-black font-bold text-xs rounded transition">
                 Play Track

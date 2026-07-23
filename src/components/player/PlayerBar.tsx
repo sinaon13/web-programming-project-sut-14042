@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { usePlayer } from '@/context/PlayerContext';
 import { useAuth } from '@/context/AuthContext';
+import { DownloadButton } from '@/components/ui/DownloadButton';
 import Link from 'next/link';
 
 export const PlayerBar: React.FC = () => {
@@ -34,7 +35,7 @@ export const PlayerBar: React.FC = () => {
         </div>
 
         <div className="flex flex-col items-center w-full md:w-2/4">
-          <div className="flex items-center space-x-4 mb-1">
+          <div className="flex items-center space-x-3 mb-1">
             <button onClick={toggleShuffle} className={`text-xs font-bold ${isShuffle ? 'text-green-500' : 'text-neutral-400 hover:text-white'}`}>SHUFFLE</button>
             <button onClick={prevTrack} className="text-neutral-400 hover:text-white">⏮</button>
             <button onClick={togglePlay} className="w-9 h-9 bg-white text-black rounded-full flex items-center justify-center font-bold shadow hover:scale-105 transition">
@@ -42,6 +43,8 @@ export const PlayerBar: React.FC = () => {
             </button>
             <button onClick={nextTrack} className="text-neutral-400 hover:text-white">⏭</button>
             <button onClick={toggleRepeat} className={`text-xs font-bold ${repeatMode !== 'OFF' ? 'text-green-500' : 'text-neutral-400 hover:text-white'}`}>REP [{repeatMode}]</button>
+            {/* FIX 1: Download button integrated directly into the player */}
+            <DownloadButton track={currentTrack} />
           </div>
 
           <div className="flex items-center space-x-2 w-full max-w-md">
@@ -82,4 +85,4 @@ export const PlayerBar: React.FC = () => {
       )}
     </>
   );
-};
+}
