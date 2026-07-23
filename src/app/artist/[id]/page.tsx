@@ -36,13 +36,13 @@ export default function ArtistProfilePage() {
   return (
     <div className="space-y-8">
       <div className="p-8 bg-gradient-to-b from-neutral-800 to-neutral-900 border border-neutral-800 rounded-2xl flex items-center justify-between shadow-xl">
-        <div className="flex items-center space-x-6">
-          <img src={artist.avatar} className="w-24 h-24 rounded-full object-cover border-2 border-green-500 shadow-md" />
-          <div className="px-3">
-            <h1 className="text-3xl font-extrabold text-white flex items-center gap-3">
-              <span>{artist.name}</span>
+        <div className="flex items-center space-x-6 truncate">
+          <img src={artist.avatar} className="w-24 h-24 rounded-full object-cover border-2 border-green-500 shadow-md flex-shrink-0" />
+          <div className="px-3 truncate">
+            <h1 className="text-3xl font-extrabold text-white flex items-center gap-3 truncate">
+              <span className="truncate">{artist.name}</span>
               {artist.status === 'APPROVED' && (
-                <span className="text-blue-400 text-xs font-bold bg-blue-500/20 border border-blue-500/40 px-3 py-1 rounded-full shadow flex items-center gap-1" title="Verified Artist">
+                <span className="text-blue-400 text-xs font-bold bg-blue-500/20 border border-blue-500/40 px-3 py-1 rounded-full shadow flex items-center gap-1 flex-shrink-0" title="Verified Artist">
                   {t.verifiedBadge}
                 </span>
               )}
@@ -50,7 +50,7 @@ export default function ArtistProfilePage() {
             <p className="text-xs text-neutral-400 mt-1.5">{artist.followersCount + (following ? 1 : 0)} Followers</p>
           </div>
         </div>
-        <button onClick={() => setFollowing(!following)} className={`px-6 py-2.5 rounded-full font-bold text-xs transition shadow ${following ? 'bg-neutral-800 text-white border border-neutral-600' : 'bg-green-500 text-black hover:bg-green-400'}`}>
+        <button onClick={() => setFollowing(!following)} className={`px-6 py-2.5 rounded-full font-bold text-xs transition shadow flex-shrink-0 ${following ? 'bg-neutral-800 text-white border border-neutral-600' : 'bg-green-500 text-black hover:bg-green-400'}`}>
           {following ? t.followingArtist : t.followArtist}
         </button>
       </div>
@@ -88,15 +88,20 @@ export default function ArtistProfilePage() {
         <div className="space-y-2">
           {artistTracks.map(tItem => (
             <div key={tItem.id} className="flex items-center justify-between p-3.5 bg-neutral-900 border border-neutral-800 rounded-xl hover:border-neutral-700 transition">
-              <span className="text-sm font-semibold text-white">{tItem.title}</span>
-              <div className="flex items-center space-x-3">
+              <div className="truncate pr-2">
+                <h4 className="text-sm font-bold text-white truncate">{tItem.title}</h4>
+                <div className="text-xs text-neutral-400 truncate mt-0.5">
+                  {tItem.artistName} {tItem.collaborators && <span className="text-neutral-500 font-normal">ft. {tItem.collaborators}</span>}
+                </div>
+              </div>
+              <div className="flex items-center space-x-3 flex-shrink-0">
                 {currentUser?.tier === 'GOLD' && (
                   <span className="text-[11px] font-mono bg-amber-500/10 text-amber-400 border border-amber-500/30 px-2.5 py-1 rounded hidden sm:inline-block">
                     ▶ {(tItem.totalStreams || tItem.listenersCount * 2).toLocaleString()} {t.streams} • 👤 {tItem.listenersCount.toLocaleString()} {t.unique}
                   </span>
                 )}
                 <DownloadButton track={tItem} />
-                <button onClick={() => playTrack(tItem, artistTracks)} className="px-5 py-1.5 bg-green-500/20 text-green-400 font-bold text-xs rounded-full hover:bg-green-500 hover:text-black transition">{t.play}</button>
+                <button onClick={() => playTrack(tItem, artistTracks)} className="px-5 py-1.5 bg-green-500/20 text-green-400 font-bold text-xs rounded-full hover:bg-green-500 hover:text-black transition shadow">{t.play}</button>
               </div>
             </div>
           ))}

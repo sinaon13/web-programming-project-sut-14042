@@ -4,7 +4,7 @@ import { getDB } from '@/lib/mockData';
 import { Track } from '@/lib/types';
 import { usePlayer } from '@/context/PlayerContext';
 import { useAuth } from '@/context/AuthContext';
-import { useLanguage } from '@/context/LanguageContext'; // Imported
+import { useLanguage } from '@/context/LanguageContext';
 import { DownloadButton } from '@/components/ui/DownloadButton';
 import { PlaylistMenu } from '@/components/ui/PlaylistMenu';
 import Link from 'next/link';
@@ -17,7 +17,7 @@ export default function BrowsePage() {
   const [showVipModal, setShowVipModal] = useState(false);
   const { playTrack } = usePlayer();
   const { currentUser } = useAuth();
-  const { t } = useLanguage(); // Grabbed translations
+  const { t } = useLanguage();
   const router = useRouter();
 
   useEffect(() => {
@@ -33,7 +33,7 @@ export default function BrowsePage() {
   };
 
   const filtered = allTracks
-    .filter(tItem => tItem.title.toLowerCase().includes(query.toLowerCase()) || tItem.artistName.toLowerCase().includes(query.toLowerCase()))
+    .filter(tItem => tItem.title.toLowerCase().includes(query.toLowerCase()) || tItem.artistName.toLowerCase().includes(query.toLowerCase()) || (tItem.collaborators && tItem.collaborators.toLowerCase().includes(query.toLowerCase())))
     .sort((a, b) => sortBy === 'LISTENERS' ? b.listenersCount - a.listenersCount : new Date(b.releaseDate).getTime() - new Date(a.releaseDate).getTime());
 
   return (
@@ -53,22 +53,24 @@ export default function BrowsePage() {
       <div className="space-y-2">
         {filtered.map(track => (
           <div key={track.id} className="flex items-center justify-between p-3 bg-neutral-900 border border-neutral-800 rounded-xl hover:border-neutral-700 transition">
-            <div className="flex items-center space-x-4">
-              <img src={track.coverUrl} className="w-12 h-12 rounded object-cover" />
-              <div className="px-2">
-                <h4 className="text-sm font-bold text-white flex items-center gap-1.5">
-                  <span>{track.title}</span>
-                  {track.isEarlyAccess && <span className="text-[10px] bg-amber-500/20 text-amber-400 px-1.5 py-0.5 rounded font-bold">VIP Gold</span>}
+            <div className="flex items-center space-x-4 truncate">
+              <img src={track.coverUrl} className="w-12 h-12 rounded object-cover flex-shrink-0" />
+              <div className="px-2 truncate">
+                <h4 className="text-sm font-bold text-white flex items-center gap-1.5 truncate">
+                  <span className="truncate">{track.title}</span>
+                  {track.isEarlyAccess && <span className="text-[10px] bg-amber-500/20 text-amber-400 px-1.5 py-0.5 rounded font-bold flex-shrink-0">VIP Gold</span>}
                 </h4>
-                <div className="text-xs text-neutral-400 flex items-center gap-1 mt-0.5">
-                  <Link href={`/artist/${track.artistId}`} className="hover:text-white hover:underline">{track.artistName}</Link>
+                <div className="text-xs text-neutral-400 flex items-center gap-1 mt-0.5 truncate">
+                  <Link href={`/artist/${track.artistId}`} className="hover:text-white hover:underline truncate">
+                    {track.artistName} {track.collaborators && <span className="text-neutral-500 font-normal">ft. {track.collaborators}</span>}
+                  </Link>
                   <span>•</span>
-                  {track.albumId ? <Link href={`/albums/${track.albumId}`} className="hover:text-white hover:underline">{track.album}</Link> : <span>{track.album}</span>}
+                  {track.albumId ? <Link href={`/albums/${track.albumId}`} className="hover:text-white hover:underline truncate">{track.album}</Link> : <span>{track.album}</span>}
                 </div>
               </div>
             </div>
 
-            <div className="flex items-center space-x-2 sm:space-x-3">
+            <div className="flex items-center space-x-2 sm:space-x-3 flex-shrink-0">
               {currentUser?.tier === 'GOLD' && (
                 <span className="text-[11px] font-mono bg-amber-500/10 text-amber-400 border border-amber-500/30 px-2.5 py-1 rounded hidden lg:inline-block">
                   ▶ {(track.totalStreams || track.listenersCount * 2).toLocaleString()} {t.streams} • 👤 {track.listenersCount.toLocaleString()} {t.unique}
@@ -83,17 +85,6 @@ export default function BrowsePage() {
           </div>
         ))}
       </div>
-
-      {showVipModal && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50">
-          <div className="bg-neutral-900 border border-amber-500/50 p-6 rounded-xl max-w-sm w-full text-center shadow-2xl">
-            <h3 className="text-lg font-bold text-amber-400 mb-2">VIP Gold Exclusive Track</h3>
-            <p className="text-xs text-neutral-300 mb-6 leading-relaxed">This Early Access release is restricted to Gold VIP subscribers. Upgrade your tier to stream exclusive tracks instantly!</p>
-            <button onClick={() => { setShowVipModal(false); router.push('/settings'); }} className="w-full py-2.5 bg-amber-400 text-black font-bold rounded text-xs mb-2 hover:bg-amber-300">Upgrade to Gold VIP</button>
-            <button onClick={() => setShowVipModal(false)} className="text-xs text-neutral-400 hover:text-white mt-2">Maybe Later</button>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

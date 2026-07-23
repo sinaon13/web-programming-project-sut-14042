@@ -4,7 +4,7 @@ import { getDB } from '@/lib/mockData';
 import { Track } from '@/lib/types';
 import { usePlayer } from '@/context/PlayerContext';
 import { useAuth } from '@/context/AuthContext';
-import { useLanguage } from '@/context/LanguageContext'; // Imported
+import { useLanguage } from '@/context/LanguageContext';
 import { DownloadButton } from '@/components/ui/DownloadButton';
 import Link from 'next/link';
 
@@ -12,7 +12,7 @@ export default function SinglesArchivePage() {
   const [singles, setSingles] = useState<Track[]>([]);
   const { playTrack } = usePlayer();
   const { currentUser } = useAuth();
-  const { t } = useLanguage(); // Grabbed translations
+  const { t } = useLanguage();
 
   useEffect(() => {
     const all = getDB<Track[]>('db_tracks', []);
@@ -29,19 +29,21 @@ export default function SinglesArchivePage() {
       <div className="space-y-2">
         {singles.map(track => (
           <div key={track.id} className="flex items-center justify-between p-3.5 bg-neutral-900 border border-neutral-800 rounded-xl hover:border-neutral-700 transition">
-            <div className="flex items-center space-x-4">
-              <img src={track.coverUrl} className="w-12 h-12 rounded object-cover" />
-              <div className="px-2">
-                <h4 className="text-sm font-bold text-white">{track.title}</h4>
-                <div className="text-xs text-neutral-400 flex items-center gap-1.5 mt-0.5">
-                  <Link href={`/artist/${track.artistId}`} className="hover:text-white underline">{track.artistName}</Link>
+            <div className="flex items-center space-x-4 truncate">
+              <img src={track.coverUrl} className="w-12 h-12 rounded object-cover flex-shrink-0" />
+              <div className="px-2 truncate">
+                <h4 className="text-sm font-bold text-white truncate">{track.title}</h4>
+                <div className="text-xs text-neutral-400 flex items-center gap-1.5 mt-0.5 truncate">
+                  <Link href={`/artist/${track.artistId}`} className="hover:text-white underline truncate">
+                    {track.artistName} {track.collaborators && <span className="text-neutral-500 font-normal">ft. {track.collaborators}</span>}
+                  </Link>
                   <span>•</span>
                   <span className="text-green-400 font-semibold">{track.fileFormat || 'MP3'}</span>
                 </div>
               </div>
             </div>
 
-            <div className="flex items-center space-x-3">
+            <div className="flex items-center space-x-3 flex-shrink-0">
               {currentUser?.tier === 'GOLD' && (
                 <span className="text-[11px] font-mono bg-amber-500/10 text-amber-400 border border-amber-500/30 px-2.5 py-1 rounded hidden md:inline-block">
                   ▶ {(track.totalStreams || track.listenersCount * 2).toLocaleString()} {t.streams} • 👤 {track.listenersCount.toLocaleString()} {t.unique}

@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { usePlayer } from '@/context/PlayerContext';
-import { useLanguage } from '@/context/LanguageContext'; // 1. Imported Language Hook
+import { useLanguage } from '@/context/LanguageContext';
 import { getDB } from '@/lib/mockData';
 import { Track, Album, Playlist } from '@/lib/types';
 import { DownloadButton } from '@/components/ui/DownloadButton';
@@ -12,7 +12,7 @@ import Link from 'next/link';
 export default function HomePage() {
   const { currentUser } = useAuth();
   const { playTrack } = usePlayer();
-  const { t } = useLanguage(); // 2. Grabbed translation object
+  const { t } = useLanguage();
   const [tracks, setTracks] = useState<Track[]>([]);
   const [albums, setAlbums] = useState<Album[]>([]);
   const [recentPlaylists, setRecentPlaylists] = useState<Playlist[]>([]);
@@ -80,9 +80,11 @@ export default function HomePage() {
               <div key={track.id} className="flex items-center justify-between p-3 bg-black/40 border border-amber-500/20 rounded-lg">
                 <div className="flex items-center space-x-3">
                   <img src={track.coverUrl} className="w-12 h-12 rounded object-cover" />
-                  <div className="px-2">
-                    <h4 className="text-sm font-bold text-white">{track.title}</h4>
-                    <Link href={`/artist/${track.artistId}`} className="text-xs text-amber-300 hover:underline block">{track.artistName}</Link>
+                  <div className="px-2 truncate">
+                    <h4 className="text-sm font-bold text-white truncate">{track.title}</h4>
+                    <Link href={`/artist/${track.artistId}`} className="text-xs text-amber-300 hover:underline block truncate">
+                      {track.artistName} {track.collaborators && <span className="text-neutral-400 font-normal">ft. {track.collaborators}</span>}
+                    </Link>
                   </div>
                 </div>
                 <div className="flex items-center space-x-2">
@@ -106,7 +108,9 @@ export default function HomePage() {
                 <div className="flex justify-between items-start">
                   <div className="truncate pr-2">
                     <h4 className="text-sm font-bold text-white truncate">{track.title}</h4>
-                    <Link href={`/artist/${track.artistId}`} className="text-xs text-neutral-400 hover:text-white hover:underline block truncate mt-0.5">{track.artistName}</Link>
+                    <Link href={`/artist/${track.artistId}`} className="text-xs text-neutral-400 hover:text-white hover:underline block truncate mt-0.5">
+                      {track.artistName} {track.collaborators && <span className="text-neutral-500 font-normal">ft. {track.collaborators}</span>}
+                    </Link>
                   </div>
                   <div className="flex items-center space-x-1">
                     <PlaylistMenu trackId={track.id} />
