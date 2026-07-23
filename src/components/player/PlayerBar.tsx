@@ -12,7 +12,7 @@ export const PlayerBar: React.FC = () => {
   const { t } = useLanguage();
   const [showLyrics, setShowLyrics] = useState(false);
   const [showQueue, setShowQueue] = useState(false);
-  const [isFullScreen, setIsFullScreen] = useState(false); // NEW: Full screen modal toggle!
+  const [isFullScreen, setIsFullScreen] = useState(false);
 
   if (!currentTrack) return null;
 
@@ -25,7 +25,6 @@ export const PlayerBar: React.FC = () => {
 
   return (
     <>
-      {/* 1. STANDARD DESKTOP & MOBILE MINI-PLAYER BAR */}
       <div className="fixed bottom-0 left-0 right-0 bg-neutral-900 border-t border-neutral-800 p-3 px-6 flex flex-col md:flex-row items-center justify-between z-40 shadow-2xl">
         <div className="flex items-center justify-between w-full md:w-1/4 mb-2 md:mb-0">
           <div className="flex items-center space-x-3 truncate">
@@ -45,7 +44,6 @@ export const PlayerBar: React.FC = () => {
             </div>
           </div>
 
-          {/* MOBILE ONLY: Button to expand mini-player into Full Screen! */}
           <button onClick={() => setIsFullScreen(true)} className="md:hidden text-xs bg-neutral-800 text-green-400 font-bold px-3 py-1.5 rounded border border-green-500/30">
             {t.expandPlayer}
           </button>
@@ -93,7 +91,6 @@ export const PlayerBar: React.FC = () => {
         </div>
       </div>
 
-      {/* 2. FULL-SCREEN MOBILE & DESKTOP MODAL PLAYER */}
       {isFullScreen && (
         <div className="fixed inset-0 bg-gradient-to-b from-neutral-800 via-neutral-900 to-black z-50 flex flex-col justify-between p-6 md:p-12 overflow-y-auto animate-fadeIn">
           <div className="flex justify-between items-center w-full max-w-2xl mx-auto border-b border-neutral-800 pb-4">
@@ -145,7 +142,6 @@ export const PlayerBar: React.FC = () => {
         </div>
       )}
 
-      {/* 3. UP NEXT PLAYBACK QUEUE DRAWER */}
       {showQueue && (
         <div className="fixed bottom-16 right-6 w-80 bg-neutral-900 border border-neutral-700 rounded-xl shadow-2xl p-4 z-50 text-left max-h-96 flex flex-col">
           <div className="flex justify-between items-center border-b border-neutral-800 pb-2 mb-3">
@@ -163,7 +159,8 @@ export const PlayerBar: React.FC = () => {
                     <p className="text-xs font-bold text-white truncate">{idx + 1}. {tItem.title}</p>
                     <span className="text-[10px] text-neutral-400">{tItem.artistName}</span>
                   </div>
-                  <button onClick={() => playTrack(tItem, queue.slice(idx + 1))} className="text-[11px] bg-green-500/20 text-green-400 font-bold px-2 py-0.5 rounded hover:bg-green-500 hover:text-black transition">
+                  {/* FIXED: Calls playTrack(tItem) cleanly without resetting playlist/queue index */}
+                  <button onClick={() => playTrack(tItem)} className="text-[11px] bg-green-500/20 text-green-400 font-bold px-2 py-0.5 rounded hover:bg-green-500 hover:text-black transition">
                     {t.play}
                   </button>
                 </div>
@@ -173,7 +170,6 @@ export const PlayerBar: React.FC = () => {
         </div>
       )}
 
-      {/* 4. LYRICS MODAL */}
       {showLyrics && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
           <div className="bg-neutral-900 border border-neutral-800 p-6 rounded-xl max-w-md w-full text-center shadow-2xl">
@@ -188,4 +184,4 @@ export const PlayerBar: React.FC = () => {
       )}
     </>
   );
-}
+};

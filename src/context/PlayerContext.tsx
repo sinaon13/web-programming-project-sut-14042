@@ -41,7 +41,6 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
-  // Initialize native HTMLAudioElement
   useEffect(() => {
     audioRef.current = new Audio();
     audioRef.current.volume = volume;
@@ -60,7 +59,6 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     audioRef.current.addEventListener('loadedmetadata', handleLoadedMetadata);
     audioRef.current.addEventListener('ended', handleEnded);
 
-    // UPGRADED: Listen for logout signal from AuthContext to shut down player!
     const handleLogoutShutdown = () => {
       stopAndClosePlayer();
     };
@@ -77,13 +75,11 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     };
   }, []);
 
-  // Sync volume changes
   const setVolume = (vol: number) => {
     setVolumeState(vol);
     if (audioRef.current) audioRef.current.volume = vol;
   };
 
-  // FULL SHUTDOWN: Pauses audio and hides player bar completely
   const stopAndClosePlayer = () => {
     if (audioRef.current) {
       audioRef.current.pause();
@@ -97,13 +93,27 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     setQueue([]);
   };
 
-  // Play Track & Register Analytics
+  // ROBUST PLAY TRACK & QUEUE SYNC ENGINE
   const playTrack = (track: Track, list: Track[] = []) => {
+    let activePlaylist = playlist;
     if (list.length > 0) {
+      activePlaylist = list;
       setPlaylist(list);
-      const idx = list.findIndex(t => t.id === track.id);
-      const upcoming = idx !== -1 ? list.slice(idx + 1) : [];
-      setQueue(upcoming);
+    }
+
+    // Find index in activePlaylist
+    const idx = activePlaylist.findIndex(t => t.id === track.id);
+    if (idx !== -1) {
+      setQueue(activePlaylist.slice(idx + 1));
+    } else {
+      // If track is clicked from queue, find it in the current queue and update upcoming queue accordingly
+      const qIdx = queue.findIndex(t => t.id === track.id);
+      if (qIdx !== -1) {
+        setQueue(queue.slice(qIdx + 1));
+      } else {
+        // Fallback: If not found anywhere, keep existing queue or set empty
+        setQueue([]);
+      }
     }
 
     setCurrentTrack(track);
@@ -114,7 +124,7 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       audioRef.current.play().catch(() => setIsPlaying(false));
     }
 
-    // Increment stream count in mock database
+    // Register analytics stream count
     const allTracks = getDB<Track[]>('db_tracks', []);
     const updatedTracks = allTracks.map(t => {
       if (t.id === track.id) {
@@ -156,7 +166,6 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     setIsShuffle(!isShuffle);
   };
 
-  // Smart Next Track Engine
   const nextTrack = () => {
     if (!currentTrack || playlist.length === 0) return;
 
@@ -183,11 +192,9 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     }
   };
 
-  // UPGRADED BACK BUTTON: 3-Second double-click rule!
   const prevTrack = () => {
     if (!currentTrack || !audioRef.current) return;
 
-    // Rule 1: If song played for more than 3 seconds, pressing Back once restarts the current song!
     if (audioRef.current.currentTime > 3) {
       audioRef.current.currentTime = 0;
       setProgress(0);
@@ -197,11 +204,9 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       return;
     }
 
-    // Rule 2: If under 3 seconds (double click), jump to the PREVIOUS song in the list!
     if (playlist.length === 0) return;
 
     const currentIdx = playlist.findIndex(t => t.id === currentTrack.id);
-    // If on the first track, smartly loop around to the last track in the album/playlist!
     const prevIdx = currentIdx <= 0 ? playlist.length - 1 : currentIdx - 1;
     const previousSong = playlist[prevIdx];
 
