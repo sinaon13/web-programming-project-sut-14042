@@ -60,20 +60,19 @@ export default function BrowsePage() {
                 <div className="text-xs text-neutral-400 flex items-center gap-1 mt-0.5">
                   <Link href={`/artist/${track.artistId}`} className="hover:text-white hover:underline">{track.artistName}</Link>
                   <span>•</span>
-                  {/* FIX: Updated link to plural /albums/${track.albumId} */}
+                  {/* FIX 3: Strictly plural /albums/${track.albumId} */}
                   {track.albumId ? <Link href={`/albums/${track.albumId}`} className="hover:text-white hover:underline">{track.album}</Link> : <span>{track.album}</span>}
                 </div>
               </div>
             </div>
 
             <div className="flex items-center space-x-3">
-              {/* FIX: Gold VIP Analytics display */}
+              {/* FIX 4: Deleted standard stream counter, kept strictly Gold VIP stats */}
               {currentUser?.tier === 'GOLD' && (
                 <span className="text-[11px] font-mono bg-amber-500/10 text-amber-400 border border-amber-500/30 px-2.5 py-1 rounded hidden lg:inline-block">
                   ▶ {(track.totalStreams || track.listenersCount * 2).toLocaleString()} streams • 👤 {track.listenersCount.toLocaleString()} unique
                 </span>
               )}
-              <span className="text-xs text-neutral-500 hidden md:inline">{track.listenersCount.toLocaleString()} streams</span>
               <DownloadButton track={track} />
               <button onClick={() => handlePlayAttempt(track, filtered)} className={`px-4 py-1.5 font-bold text-xs rounded-full transition ${track.isEarlyAccess && currentUser?.tier !== 'GOLD' ? 'bg-amber-400 text-black hover:bg-amber-300' : 'bg-white text-black hover:bg-green-400'}`}>
                 {track.isEarlyAccess && currentUser?.tier !== 'GOLD' ? '🔒 Unlock VIP' : 'Play'}

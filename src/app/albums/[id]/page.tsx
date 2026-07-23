@@ -63,7 +63,7 @@ export default function AlbumDetailPage() {
               </div>
               
               <div className="flex items-center space-x-4">
-                {/* FIX: Gold VIP Analytics display */}
+                {/* FIX 4: Strictly Gold VIP analytics only */}
                 {currentUser?.tier === 'GOLD' && (
                   <span className="text-[11px] font-mono bg-amber-500/10 text-amber-400 border border-amber-500/30 px-2.5 py-1 rounded hidden sm:inline-block">
                     ▶ {(track.totalStreams || track.listenersCount * 2).toLocaleString()} streams • 👤 {track.listenersCount.toLocaleString()} unique

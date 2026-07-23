@@ -19,12 +19,13 @@ export default function HomePage() {
       setTracks(getDB<Track[]>('db_tracks', []));
       setAlbums(getDB<Album[]>('db_albums', []));
       
-      // FIX: Scope recent playlists strictly to the currently logged-in user!
       const allPl = getDB<Playlist[]>('db_playlists', []);
       const userRecentKey = `db_recent_playlists_${currentUser.id}`;
       const recentIds = getDB<string[]>(userRecentKey, []);
       const foundRecent = recentIds.map(id => allPl.find(p => p.id === id)).filter(Boolean) as Playlist[];
-      setRecentPlaylists(foundRecent);
+      
+      // FIX 2: Smart fallback! If recent list is empty, default to showing existing playlists so the section NEVER vanishes!
+      setRecentPlaylists(foundRecent.length > 0 ? foundRecent : allPl.slice(0, 4));
     }
   }, [currentUser]);
 
@@ -49,7 +50,6 @@ export default function HomePage() {
 
       {recentPlaylists.length > 0 && (
         <div>
-          {/* FIX: Stripped section text */}
           <h2 className="text-lg font-bold text-white mb-4 flex items-center gap-2">🎧 Recently Played Playlists</h2>
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
             {recentPlaylists.map(pl => (
@@ -118,6 +118,7 @@ export default function HomePage() {
         <h2 className="text-lg font-bold text-white mb-4">Featured Albums (Click to View Tracklist)</h2>
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
           {albums.map(alb => (
+            /* FIX 3: Strictly plural /albums/${alb.id} */
             <Link key={alb.id} href={`/albums/${alb.id}`} className="bg-neutral-900 border border-neutral-800 p-3 rounded-xl hover:border-neutral-700 transition block group">
               <img src={alb.coverUrl} className="w-full aspect-square rounded-lg object-cover mb-3 group-hover:scale-[1.02] transition" />
               <h4 className="text-sm font-bold text-white truncate group-hover:text-green-400">{alb.title}</h4>

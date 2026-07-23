@@ -42,6 +42,15 @@ export default function PlaylistsPage() {
     setDB('db_playlists', all);
   };
 
+  // FIX 2: Trigger logging to recent playlists when hitting Play
+  const handlePlayFromPlaylist = (track: Track, list: Track[], pl: Playlist) => {
+    const userRecentKey = `db_recent_playlists_${currentUser.id}`;
+    const recent = getDB<string[]>(userRecentKey, []);
+    const updated = [pl.id, ...recent.filter(id => id !== pl.id)].slice(0, 6);
+    localStorage.setItem(userRecentKey, JSON.stringify(updated));
+    playTrack(track, list);
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-neutral-900 border border-neutral-800 p-6 rounded-xl gap-4 shadow-xl">
@@ -70,7 +79,7 @@ export default function PlaylistsPage() {
                   {plTracks.map(t => (
                     <div key={t.id} className="flex items-center justify-between text-xs bg-black/40 p-2.5 rounded border border-neutral-800/60">
                       <span className="truncate pr-2 font-medium text-neutral-200">{t.title} - {t.artistName}</span>
-                      <button onClick={() => playTrack(t, plTracks)} className="text-green-400 font-bold hover:underline">▶ Play</button>
+                      <button onClick={() => handlePlayFromPlaylist(t, plTracks, pl)} className="text-green-400 font-bold hover:underline">▶ Play</button>
                     </div>
                   ))}
                 </div>
