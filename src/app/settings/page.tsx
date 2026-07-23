@@ -1,8 +1,8 @@
 'use client';
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
-import { getDB } from '@/lib/mockData';
-import { Tier } from '@/lib/types';
+import { getDB, setDB } from '@/lib/mockData';
+import { Tier, User, Track, Album, Playlist, Ticket, AppNotification } from '@/lib/types';
 import { usePlayer } from '@/context/PlayerContext';
 import { useLanguage } from '@/context/LanguageContext';
 
@@ -36,6 +36,40 @@ export default function SettingsPage() {
 
   const savePreferences = () => {
     alert('✅ Platform preferences and notification limitations saved successfully!');
+  };
+
+  // CASCADING ACCOUNT DELETION ENGINE: Removes all traces of user without breaking the app!
+  const handleDeleteAccount = () => {
+    if (!confirm(t.deleteAccountConfirm)) return;
+
+    const uId = currentUser.id;
+
+    // 1. Delete User Account
+    const users = getDB<User[]>('db_users', []).filter(u => u.id !== uId);
+    setDB('db_users', users);
+
+    // 2. Delete User's Playlists
+    const playlists = getDB<Playlist[]>('db_playlists', []).filter(p => p.ownerId !== uId);
+    setDB('db_playlists', playlists);
+
+    // 3. Delete User's Support Tickets
+    const tickets = getDB<Ticket[]>('db_tickets', []).filter(tk => tk.userId !== uId);
+    setDB('db_tickets', tickets);
+
+    // 4. Delete User's Notifications
+    const notifs = getDB<AppNotification[]>('db_notifications', []).filter(n => n.userId !== uId);
+    setDB('db_notifications', notifs);
+
+    // 5. If Artist, cleanly delete all their published Tracks & Albums!
+    if (currentUser.role === 'ARTIST') {
+      const tracks = getDB<Track[]>('db_tracks', []).filter(tr => tk => tr.artistId !== uId);
+      setDB('db_tracks', tracks);
+      const albums = getDB<Album[]>('db_albums', []).filter(a => a.artistId !== uId);
+      setDB('db_albums', albums);
+    }
+
+    alert('✅ Account and all associated data deleted permanently.');
+    logout();
   };
 
   return (
@@ -109,9 +143,16 @@ export default function SettingsPage() {
         </button>
       </div>
 
-      <button onClick={() => { if (confirm('Are you sure you want to log out?')) logout(); }} className="w-full py-3 bg-red-600/20 border border-red-500 text-red-400 font-bold text-xs rounded hover:bg-red-600/30 transition">
-        {t.logout}
-      </button>
+      <div className="space-y-3 pt-2">
+        <button onClick={() => { if (confirm('Are you sure you want to log out?')) logout(); }} className="w-full py-3 bg-neutral-800 border border-neutral-700 text-neutral-300 font-bold text-xs rounded hover:bg-neutral-700 hover:text-white transition">
+          {t.logout}
+        </button>
+
+        {/* FULL ACCOUNT DELETION BUTTON */}
+        <button onClick={handleDeleteAccount} className="w-full py-3 bg-red-600/20 border border-red-500 text-red-400 font-bold text-xs rounded hover:bg-red-600/40 transition shadow-lg">
+          {t.deleteAccountBtn}
+        </button>
+      </div>
     </div>
   );
 }

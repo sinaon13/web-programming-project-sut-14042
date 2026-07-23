@@ -22,7 +22,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     initDB();
     const stored = getDB<User | null>('auth_user', null);
     if (stored) {
-      // FIX: Always sync with db_users to catch Admin approvals/rejections immediately!
       const allUsers = getDB<User[]>('db_users', []);
       const freshUser = allUsers.find(u => u.id === stored.id) || stored;
       setCurrentUser(freshUser);
@@ -41,9 +40,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return false;
   };
 
+  // UPGRADED LOGOUT: Emits event to shut down the music player immediately!
   const logout = () => {
     setCurrentUser(null);
     localStorage.removeItem('auth_user');
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new Event('auth_logout'));
+    }
     router.push('/login');
   };
 

@@ -29,6 +29,8 @@ const dictionary = {
     emptyQueue: 'Your queue is currently empty.',
     closeLyrics: 'Close Lyrics',
     play: 'Play',
+    expandPlayer: '⛶ Full Screen',
+    collapsePlayer: '▼ Close Full Screen',
     
     // Home Page
     welcomeBack: 'Welcome back',
@@ -104,6 +106,8 @@ const dictionary = {
     notifEmail: 'Send system notifications directly to my registered email',
     interfaceLang: 'Interface Language',
     savePrefs: 'Save All Preferences',
+    deleteAccountBtn: '🗑️ Delete Account & All Data',
+    deleteAccountConfirm: '⚠️ WARNING: This will permanently delete your account, playlists, tickets, and all uploaded works! Proceed?',
 
     // Artist Portal & Profile
     verifiedBadge: '✓ Verified Artist',
@@ -179,6 +183,8 @@ const dictionary = {
     emptyQueue: 'صف پخش شما در حال حاضر خالی است.',
     closeLyrics: 'بستن متن آهنگ',
     play: 'پخش',
+    expandPlayer: '⛶ تمام‌صفحه',
+    collapsePlayer: '▼ بستن حالت تمام‌صفحه',
     
     // Home Page
     welcomeBack: 'خوش آمدید',
@@ -254,6 +260,8 @@ const dictionary = {
     notifEmail: 'ارسال اعلانات سیستمی به ایمیل ثبت‌شده من',
     interfaceLang: 'زبان رابط کاربری',
     savePrefs: 'ذخیره تمامی تنظیمات',
+    deleteAccountBtn: '🗑️ حذف کامل حساب کاربری و تمامی داده‌ها',
+    deleteAccountConfirm: '⚠️ هشدار: با این کار حساب کاربری، پلی‌لیست‌ها، تیکت‌ها و تمامی آثار منتشرشده شما برای همیشه حذف خواهند شد! ادامه می‌دهید؟',
 
     // Artist Portal & Profile
     verifiedBadge: '✓ نشان هنرمند تایید شده',
