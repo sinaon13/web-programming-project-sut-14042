@@ -11,13 +11,12 @@ export default function SettingsPage() {
   const [lang, setLang] = useState('English');
   const [prices, setPrices] = useState({ SILVER: 50000, GOLD: 120000 });
   
-  // FIX 4: Notification limitation toggles & System Volume states
   const [notifNewReleases, setNotifNewReleases] = useState(true);
   const [notifExpiration, setNotifExpiration] = useState(true);
   const [notifEmail, setNotifEmail] = useState(false);
 
   useEffect(() => {
-    setPrices(getDB<'db_prices', { SILVER: number; GOLD: number }>('db_prices', { SILVER: 50000, GOLD: 120000 }));
+    setPrices(getDB<{ SILVER: number; GOLD: number }>('db_prices', { SILVER: 50000, GOLD: 120000 }));
     const savedVol = localStorage.getItem('sys_default_volume');
     if (savedVol && !isNaN(parseFloat(savedVol))) setVolume(parseFloat(savedVol));
   }, []);
@@ -57,9 +56,9 @@ export default function SettingsPage() {
         </div>
       </div>
 
-      {/* FIX 4: Expand settings with Audio & Notification controls */}
       <div className="p-6 bg-neutral-900 border border-neutral-800 rounded-xl space-y-6 shadow-xl">
-        <h3 className="font-bold text-white text-md border-b border-neutral-800 pb-3">Platform & Audio Preferences (Section 5.2)</h3>
+        {/* FIX: Removed Section text */}
+        <h3 className="font-bold text-white text-md border-b border-neutral-800 pb-3">Platform & Audio Preferences</h3>
         
         <div>
           <div className="flex justify-between items-center mb-1">

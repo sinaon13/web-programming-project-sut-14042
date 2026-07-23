@@ -4,6 +4,7 @@ import { getDB } from '@/lib/mockData';
 import { User, Track, Album } from '@/lib/types';
 import { useAuth } from '@/context/AuthContext';
 import { usePlayer } from '@/context/PlayerContext';
+import { DownloadButton } from '@/components/ui/DownloadButton';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 
@@ -67,7 +68,8 @@ export default function ArtistProfilePage() {
           <h2 className="text-lg font-bold text-white mb-4">Released Albums</h2>
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
             {artistAlbums.map(alb => (
-              <Link key={alb.id} href={`/album/${alb.id}`} className="bg-neutral-900 border border-neutral-800 p-3 rounded-xl hover:border-neutral-700 transition block group">
+              /* FIX: Updated link to plural /albums/${alb.id} */
+              <Link key={alb.id} href={`/albums/${alb.id}`} className="bg-neutral-900 border border-neutral-800 p-3 rounded-xl hover:border-neutral-700 transition block group">
                 <img src={alb.coverUrl} className="w-full aspect-square rounded-lg object-cover mb-3 group-hover:scale-[1.02] transition" />
                 <h4 className="text-sm font-bold text-white truncate group-hover:text-green-400">{alb.title}</h4>
               </Link>
@@ -82,7 +84,16 @@ export default function ArtistProfilePage() {
           {artistTracks.map(track => (
             <div key={track.id} className="flex items-center justify-between p-3.5 bg-neutral-900 border border-neutral-800 rounded-xl hover:border-neutral-700 transition">
               <span className="text-sm font-semibold text-white">{track.title}</span>
-              <button onClick={() => playTrack(track, artistTracks)} className="px-5 py-1.5 bg-green-500/20 text-green-400 font-bold text-xs rounded-full hover:bg-green-500 hover:text-black transition">Play</button>
+              <div className="flex items-center space-x-3">
+                {/* FIX: Gold VIP Analytics display */}
+                {currentUser?.tier === 'GOLD' && (
+                  <span className="text-[11px] font-mono bg-amber-500/10 text-amber-400 border border-amber-500/30 px-2.5 py-1 rounded hidden sm:inline-block">
+                    ▶ {(track.totalStreams || track.listenersCount * 2).toLocaleString()} streams • 👤 {track.listenersCount.toLocaleString()} unique
+                  </span>
+                )}
+                <DownloadButton track={track} />
+                <button onClick={() => playTrack(track, artistTracks)} className="px-5 py-1.5 bg-green-500/20 text-green-400 font-bold text-xs rounded-full hover:bg-green-500 hover:text-black transition">Play</button>
+              </div>
             </div>
           ))}
         </div>

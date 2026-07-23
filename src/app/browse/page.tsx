@@ -4,6 +4,7 @@ import { getDB } from '@/lib/mockData';
 import { Track } from '@/lib/types';
 import { usePlayer } from '@/context/PlayerContext';
 import { useAuth } from '@/context/AuthContext';
+import { DownloadButton } from '@/components/ui/DownloadButton';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 
@@ -22,7 +23,7 @@ export default function BrowsePage() {
 
   const handlePlayAttempt = (track: Track, list: Track[]) => {
     if (track.isEarlyAccess && currentUser?.tier !== 'GOLD') {
-      setShowVipModal(true); // FIX: Blocks non-VIPs from streaming VIP tracks
+      setShowVipModal(true);
       return;
     }
     playTrack(track, list);
@@ -56,11 +57,24 @@ export default function BrowsePage() {
                   <span>{track.title}</span>
                   {track.isEarlyAccess && <span className="text-[10px] bg-amber-500/20 text-amber-400 px-1.5 py-0.5 rounded font-bold">VIP Gold</span>}
                 </h4>
-                <Link href={`/artist/${track.artistId}`} className="text-xs text-neutral-400 hover:text-white hover:underline">{track.artistName} • {track.album}</Link>
+                <div className="text-xs text-neutral-400 flex items-center gap-1 mt-0.5">
+                  <Link href={`/artist/${track.artistId}`} className="hover:text-white hover:underline">{track.artistName}</Link>
+                  <span>•</span>
+                  {/* FIX: Updated link to plural /albums/${track.albumId} */}
+                  {track.albumId ? <Link href={`/albums/${track.albumId}`} className="hover:text-white hover:underline">{track.album}</Link> : <span>{track.album}</span>}
+                </div>
               </div>
             </div>
-            <div className="flex items-center space-x-4">
+
+            <div className="flex items-center space-x-3">
+              {/* FIX: Gold VIP Analytics display */}
+              {currentUser?.tier === 'GOLD' && (
+                <span className="text-[11px] font-mono bg-amber-500/10 text-amber-400 border border-amber-500/30 px-2.5 py-1 rounded hidden lg:inline-block">
+                  ▶ {(track.totalStreams || track.listenersCount * 2).toLocaleString()} streams • 👤 {track.listenersCount.toLocaleString()} unique
+                </span>
+              )}
               <span className="text-xs text-neutral-500 hidden md:inline">{track.listenersCount.toLocaleString()} streams</span>
+              <DownloadButton track={track} />
               <button onClick={() => handlePlayAttempt(track, filtered)} className={`px-4 py-1.5 font-bold text-xs rounded-full transition ${track.isEarlyAccess && currentUser?.tier !== 'GOLD' ? 'bg-amber-400 text-black hover:bg-amber-300' : 'bg-white text-black hover:bg-green-400'}`}>
                 {track.isEarlyAccess && currentUser?.tier !== 'GOLD' ? '🔒 Unlock VIP' : 'Play'}
               </button>

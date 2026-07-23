@@ -1,4 +1,3 @@
-
 'use client';
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User, Role, AppNotification } from '@/lib/types';
@@ -22,7 +21,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     initDB();
     const stored = getDB<User | null>('auth_user', null);
-    if (stored) setCurrentUser(stored);
+    if (stored) {
+      // FIX: Always sync with db_users to catch Admin approvals/rejections immediately!
+      const allUsers = getDB<User[]>('db_users', []);
+      const freshUser = allUsers.find(u => u.id === stored.id) || stored;
+      setCurrentUser(freshUser);
+      setDB('auth_user', freshUser);
+    }
   }, []);
 
   const login = (email: string) => {
@@ -64,12 +69,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setCurrentUser(newUser);
     setDB('auth_user', newUser);
 
-    // FIX 5: Automatically generate Admin notification upon new Artist registration
     if (role === 'ARTIST') {
       const notifs = getDB<AppNotification[]>('db_notifications', []);
       const adminNotif: AppNotification = {
         id: 'n_' + Date.now(),
-        userId: 'admin_support', // Targeted to ADMIN and SUPPORT roles
+        userId: 'admin_support',
         title: '🔔 New Artist Application Pending',
         message: `${name} (${email}) applied for verification. Sample: ${portfolioUrl || 'None'}`,
         isRead: false,

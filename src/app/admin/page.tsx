@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { getDB, setDB } from '@/lib/mockData';
 import { User, Ticket, AppNotification, Track } from '@/lib/types';
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
 
 export default function AdminPortalPage() {
   const { currentUser } = useAuth();
@@ -43,7 +43,6 @@ export default function AdminPortalPage() {
     setPendingArtists(users.filter(u => u.role === 'ARTIST' && u.status === 'PENDING'));
     setAllArtists(users.filter(u => u.role === 'ARTIST'));
 
-    // FIX: Automated notification sent upon approval or rejection
     const notifs = getDB<AppNotification[]>('db_notifications', []);
     const newNotif: AppNotification = {
       id: 'n_' + Date.now(),
@@ -81,7 +80,6 @@ export default function AdminPortalPage() {
     alert('System pricing adjusted successfully without code deployment!');
   };
 
-  // Chart Data Preparation (Section 3.11.2)
   const tierData = [
     { name: 'Basic (Free)', value: allUsers.filter(u => u.tier === 'BASIC').length, color: '#9ca3af' },
     { name: 'Silver Plan', value: allUsers.filter(u => u.tier === 'SILVER').length, color: '#60a5fa' },
@@ -149,7 +147,8 @@ export default function AdminPortalPage() {
 
       {tab === 'ACCOUNTING' && (
         <div className="p-6 bg-neutral-900 border border-neutral-800 rounded-xl shadow-xl">
-          <h3 className="text-lg font-bold text-white mb-4">Monthly Financial Accounting & Artist Payouts (Section 2.11.2)</h3>
+          {/* FIX: Removed Section text */}
+          <h3 className="text-lg font-bold text-white mb-4">Monthly Financial Accounting & Artist Payouts</h3>
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
@@ -211,7 +210,8 @@ export default function AdminPortalPage() {
           </div>
 
           <div className="p-6 bg-neutral-900 border border-neutral-800 rounded-xl shadow-xl">
-            <h3 className="text-lg font-bold text-white mb-6">User Subscription Tier Distribution (Section 3.11.2)</h3>
+            {/* FIX: Removed Section text */}
+            <h3 className="text-lg font-bold text-white mb-6">User Subscription Tier Distribution</h3>
             <div className="h-72 w-full">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>

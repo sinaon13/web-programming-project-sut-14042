@@ -3,11 +3,14 @@ import React, { useState, useEffect } from 'react';
 import { getDB } from '@/lib/mockData';
 import { Track } from '@/lib/types';
 import { usePlayer } from '@/context/PlayerContext';
+import { useAuth } from '@/context/AuthContext';
+import { DownloadButton } from '@/components/ui/DownloadButton';
 import Link from 'next/link';
 
 export default function SinglesArchivePage() {
   const [singles, setSingles] = useState<Track[]>([]);
   const { playTrack } = usePlayer();
+  const { currentUser } = useAuth();
 
   useEffect(() => {
     const all = getDB<Track[]>('db_tracks', []);
@@ -35,9 +38,19 @@ export default function SinglesArchivePage() {
                 </div>
               </div>
             </div>
-            <button onClick={() => playTrack(track, singles)} className="px-5 py-1.5 bg-green-500 text-black font-bold text-xs rounded-full hover:bg-green-400 transition shadow">
-              Play Single
-            </button>
+
+            <div className="flex items-center space-x-3">
+              {/* FIX: Gold VIP Analytics display */}
+              {currentUser?.tier === 'GOLD' && (
+                <span className="text-[11px] font-mono bg-amber-500/10 text-amber-400 border border-amber-500/30 px-2.5 py-1 rounded hidden md:inline-block">
+                  ▶ {(track.totalStreams || track.listenersCount * 2).toLocaleString()} streams • 👤 {track.listenersCount.toLocaleString()} unique
+                </span>
+              )}
+              <DownloadButton track={track} />
+              <button onClick={() => playTrack(track, singles)} className="px-5 py-1.5 bg-green-500 text-black font-bold text-xs rounded-full hover:bg-green-400 transition shadow">
+                Play Single
+              </button>
+            </div>
           </div>
         ))}
       </div>

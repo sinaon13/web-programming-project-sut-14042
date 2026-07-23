@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { getDB, setDB } from '@/lib/mockData';
-import { Track } from '@/lib/types';
+import { Track, User } from '@/lib/types';
 
 export default function ArtistPortalPage() {
   const { currentUser, updateUser } = useAuth();
@@ -16,18 +16,25 @@ export default function ArtistPortalPage() {
   const [collaborators, setCollaborators] = useState('');
   const [isEarlyAccess, setIsEarlyAccess] = useState(false);
   const [myTracks, setMyTracks] = useState<Track[]>([]);
-  const [bio, setBio] = useState(currentUser?.bio || '');
+  const [bio, setBio] = useState('');
 
   useEffect(() => {
     if (currentUser) {
-      const all = getDB<Track[]>('db_tracks', []);
-      setMyTracks(all.filter(t => t.artistId === currentUser.id));
+      // FIX: Force read fresh status from database to clear stale yellow pending banners
+      const allUsers = getDB<User[]>('db_users', []);
+      const freshUser = allUsers.find(u => u.id === currentUser.id);
+      if (freshUser && freshUser.status !== currentUser.status) {
+        updateUser({ status: freshUser.status, rejectionReason: freshUser.rejectionReason });
+      }
+      setBio(freshUser?.bio || currentUser.bio || '');
+      
+      const allTracks = getDB<Track[]>('db_tracks', []);
+      setMyTracks(allTracks.filter(t => t.artistId === currentUser.id));
     }
   }, [currentUser]);
 
   if (currentUser?.role !== 'ARTIST') return <div className="p-4 bg-red-900/20 text-red-400 rounded">Access Restricted to Verified Artists</div>;
   
-  // FIX: Strict enforcement of REJECTED status with red reason banner
   if (currentUser.status === 'REJECTED') {
     return (
       <div className="max-w-xl mx-auto p-8 bg-red-950/40 border-2 border-red-500 rounded-2xl text-center space-y-4 shadow-2xl">
@@ -93,7 +100,8 @@ export default function ArtistPortalPage() {
       </div>
 
       <div className="p-6 bg-neutral-900 border border-neutral-800 rounded-xl shadow-xl">
-        <h2 className="text-xl font-bold text-white mb-6">Artist Studio & Upload Center (Section 10.2)</h2>
+        {/* FIX: Removed Section text */}
+        <h2 className="text-xl font-bold text-white mb-6">Artist Studio & Upload Center</h2>
         <form onSubmit={handlePublish} className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>

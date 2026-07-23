@@ -1,4 +1,3 @@
-
 'use client';
 import React, { useState, useEffect } from 'react';
 import { getDB, setDB } from '@/lib/mockData';
@@ -24,7 +23,6 @@ export default function NotificationsPage() {
     setNotifs(notifs.map(n => ({ ...n, isRead: true })));
   };
 
-  // FIX 5: Individual "Mark as Read" handler
   const markSingleRead = (id: string) => {
     const all = getDB<AppNotification[]>('db_notifications', []);
     const updated = all.map(n => n.id === id ? { ...n, isRead: true } : n);
@@ -42,7 +40,8 @@ export default function NotificationsPage() {
   return (
     <div className="max-w-2xl mx-auto space-y-4">
       <div className="flex justify-between items-center mb-6">
-        <h2 className="text-xl font-bold text-white">System Notifications (Section 6.2)</h2>
+        {/* FIX: Removed Section text */}
+        <h2 className="text-xl font-bold text-white">System Notifications</h2>
         <button onClick={markAllRead} className="text-xs text-green-400 font-bold hover:underline">Mark All as Read</button>
       </div>
 
@@ -61,7 +60,6 @@ export default function NotificationsPage() {
               {n.targetUrl && <Link href={n.targetUrl} className="text-[11px] text-green-400 font-bold hover:underline block mt-2">View Details ➡️</Link>}
             </div>
             
-            {/* FIX 5: Individual Mark as Read & Delete controls */}
             <div className="flex flex-col items-end space-y-2 flex-shrink-0">
               {!n.isRead && (
                 <button onClick={() => markSingleRead(n.id)} className="text-[11px] bg-green-500/20 text-green-400 hover:bg-green-500 hover:text-black font-bold px-2 py-1 rounded transition">

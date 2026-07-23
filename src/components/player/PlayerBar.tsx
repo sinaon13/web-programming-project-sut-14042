@@ -31,6 +31,12 @@ export const PlayerBar: React.FC = () => {
               <span>•</span>
               <span className="text-neutral-500">{currentTrack.album}</span>
             </div>
+            {/* FIX: Gold VIP Analytics display inside Player Bar */}
+            {currentUser?.tier === 'GOLD' && (
+              <div className="text-[10px] text-amber-400 font-mono mt-0.5 truncate">
+                ▶ {(currentTrack.totalStreams || currentTrack.listenersCount * 2).toLocaleString()} streams • 👤 {currentTrack.listenersCount.toLocaleString()} unique
+              </div>
+            )}
           </div>
         </div>
 
@@ -43,7 +49,6 @@ export const PlayerBar: React.FC = () => {
             </button>
             <button onClick={nextTrack} className="text-neutral-400 hover:text-white">⏭</button>
             <button onClick={toggleRepeat} className={`text-xs font-bold ${repeatMode !== 'OFF' ? 'text-green-500' : 'text-neutral-400 hover:text-white'}`}>REP [{repeatMode}]</button>
-            {/* FIX 1: Download button integrated directly into the player */}
             <DownloadButton track={currentTrack} />
           </div>
 
