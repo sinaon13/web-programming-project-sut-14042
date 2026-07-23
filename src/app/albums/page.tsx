@@ -20,7 +20,7 @@ export default function AlbumsArchivePage() {
 
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-6">
         {albums.map(alb => (
-          <Link key={alb.id} href={`/album/${alb.id}`} className="bg-neutral-900 border border-neutral-800 p-4 rounded-xl hover:border-neutral-700 transition block group shadow-md">
+          <Link key={alb.id} href={`/albums/${alb.id}`} className="bg-neutral-900 border border-neutral-800 p-4 rounded-xl hover:border-neutral-700 transition block group shadow-md">
             <img src={alb.coverUrl} className="w-full aspect-square rounded-lg object-cover mb-3 group-hover:scale-[1.02] transition" />
             <h4 className="text-sm font-bold text-white truncate group-hover:text-green-400">{alb.title}</h4>
             <span className="text-xs text-neutral-400 block truncate mt-0.5">{alb.artistName}</span>

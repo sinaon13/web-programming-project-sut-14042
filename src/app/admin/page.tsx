@@ -25,7 +25,6 @@ export default function AdminPortalPage() {
     setTickets(getDB<Ticket[]>('db_tickets', []));
     setAllTracks(getDB<Track[]>('db_tracks', []));
     
-    // FIX 1: Passed exactly 1 type argument to getDB
     const prices = getDB<{ SILVER: number; GOLD: number }>('db_prices', { SILVER: 50000, GOLD: 120000 });
     setSilverPrice(prices.SILVER);
     setGoldPrice(prices.GOLD);
@@ -69,6 +68,14 @@ export default function AdminPortalPage() {
     setReplyText('');
   };
 
+  // Section 11.2 Requirement: Staff can formally close resolved tickets
+  const handleCloseTicket = (ticketId: string) => {
+    if (!confirm('Mark this support ticket as formally CLOSED?')) return;
+    const updated = tickets.map(t => t.id === ticketId ? { ...t, status: 'CLOSED' as const } : t);
+    setTickets(updated);
+    setDB('db_tickets', updated);
+  };
+
   const handleSettleArtist = (artistId: string) => {
     const users = getDB<User[]>('db_users', []).map(u => u.id === artistId ? { ...u, payoutStatus: 'SETTLED' as const } : u);
     setDB('db_users', users);
@@ -93,9 +100,12 @@ export default function AdminPortalPage() {
       <div className="flex border-b border-neutral-800 space-x-6 overflow-x-auto">
         <button onClick={() => setTab('VERIFY')} className={`pb-3 font-bold text-sm ${tab === 'VERIFY' ? 'text-green-500 border-b-2 border-green-500' : 'text-neutral-500'}`}>Verifications ({pendingArtists.length})</button>
         <button onClick={() => setTab('TICKETS')} className={`pb-3 font-bold text-sm ${tab === 'TICKETS' ? 'text-green-500 border-b-2 border-green-500' : 'text-neutral-500'}`}>Support Tickets ({tickets.length})</button>
-        <button onClick={() => setTab('ACCOUNTING')} className={`pb-3 font-bold text-sm ${tab === 'ACCOUNTING' ? 'text-green-500 border-b-2 border-green-500' : 'text-neutral-500'}`}>Financial Accounting</button>
+        {/* Section 11.2 Requirement: Support staff NEVER see Financial or Pricing tabs! Strictly for Admin! */}
         {currentUser.role === 'ADMIN' && (
-          <button onClick={() => setTab('PRICING')} className={`pb-3 font-bold text-sm ${tab === 'PRICING' ? 'text-amber-400 border-b-2 border-amber-400' : 'text-neutral-500'}`}>Revenue Charts & Pricing</button>
+          <>
+            <button onClick={() => setTab('ACCOUNTING')} className={`pb-3 font-bold text-sm ${tab === 'ACCOUNTING' ? 'text-green-500 border-b-2 border-green-500' : 'text-neutral-500'}`}>Financial Accounting</button>
+            <button onClick={() => setTab('PRICING')} className={`pb-3 font-bold text-sm ${tab === 'PRICING' ? 'text-amber-400 border-b-2 border-amber-400' : 'text-neutral-500'}`}>Revenue Charts & Pricing</button>
+          </>
         )}
       </div>
 
@@ -128,7 +138,12 @@ export default function AdminPortalPage() {
                 </div>
                 <div className="flex items-center gap-3">
                   <span className="text-[11px] text-neutral-400">Sent: {t.createdAt}</span>
-                  <span className="text-[10px] bg-neutral-800 px-2 py-0.5 rounded text-neutral-300">{t.status}</span>
+                  <span className={`text-[10px] px-2 py-0.5 rounded font-bold ${t.status === 'CLOSED' ? 'bg-red-500/20 text-red-400' : 'bg-green-500/20 text-green-400'}`}>{t.status}</span>
+                  {t.status !== 'CLOSED' && (
+                    <button onClick={() => handleCloseTicket(t.id)} className="text-[10px] bg-neutral-800 hover:bg-red-600/30 text-neutral-300 hover:text-red-300 px-2 py-0.5 rounded border border-neutral-700 transition">
+                      🔒 Close Ticket
+                    </button>
+                  )}
                 </div>
               </div>
               <div className="space-y-2 max-h-40 overflow-y-auto">
@@ -138,16 +153,20 @@ export default function AdminPortalPage() {
                   </div>
                 ))}
               </div>
-              <div className="flex space-x-2">
-                <input type="text" placeholder="Type staff reply..." value={replyText} onChange={e => setReplyText(e.target.value)} className="flex-1 p-1.5 bg-neutral-800 border border-neutral-700 rounded text-xs text-white" />
-                <button onClick={() => handleReplyTicket(t.id)} className="px-4 py-1.5 bg-green-500 text-black font-bold text-xs rounded">Send Reply</button>
-              </div>
+              {t.status !== 'CLOSED' ? (
+                <div className="flex space-x-2">
+                  <input type="text" placeholder="Type staff reply..." value={replyText} onChange={e => setReplyText(e.target.value)} className="flex-1 p-1.5 bg-neutral-800 border border-neutral-700 rounded text-xs text-white" />
+                  <button onClick={() => handleReplyTicket(t.id)} className="px-4 py-1.5 bg-green-500 text-black font-bold text-xs rounded">Send Reply</button>
+                </div>
+              ) : (
+                <p className="text-xs text-neutral-500 italic text-center py-1 bg-black/20 rounded">This support ticket has been closed by staff.</p>
+              )}
             </div>
           ))}
         </div>
       )}
 
-      {tab === 'ACCOUNTING' && (
+      {tab === 'ACCOUNTING' && currentUser.role === 'ADMIN' && (
         <div className="p-6 bg-neutral-900 border border-neutral-800 rounded-xl shadow-xl">
           <h3 className="text-lg font-bold text-white mb-4">Monthly Financial Accounting & Artist Payouts</h3>
           <div className="overflow-x-auto">
@@ -180,7 +199,7 @@ export default function AdminPortalPage() {
                         </span>
                       </td>
                       <td className="py-3">
-                        {currentUser.role === 'ADMIN' && art.payoutStatus !== 'SETTLED' && (
+                        {art.payoutStatus !== 'SETTLED' && (
                           <button onClick={() => handleSettleArtist(art.id)} className="px-3 py-1 bg-green-500 text-black font-bold text-xs rounded hover:bg-green-400">Confirm Settlement</button>
                         )}
                       </td>

@@ -6,9 +6,10 @@ import { DownloadButton } from '@/components/ui/DownloadButton';
 import Link from 'next/link';
 
 export const PlayerBar: React.FC = () => {
-  const { currentTrack, isPlaying, togglePlay, nextTrack, prevTrack, progress, duration, seek, volume, setVolume, repeatMode, toggleRepeat, isShuffle, toggleShuffle } = usePlayer();
+  const { currentTrack, isPlaying, togglePlay, nextTrack, prevTrack, progress, duration, seek, volume, setVolume, repeatMode, toggleRepeat, isShuffle, toggleShuffle, queue, playTrack } = usePlayer();
   const { currentUser } = useAuth();
   const [showLyrics, setShowLyrics] = useState(false);
+  const [showQueue, setShowQueue] = useState(false);
 
   if (!currentTrack) return null;
 
@@ -29,9 +30,9 @@ export const PlayerBar: React.FC = () => {
             <div className="text-xs text-neutral-400 truncate flex items-center gap-1">
               <Link href={`/artist/${currentTrack.artistId}`} className="hover:text-white underline">{currentTrack.artistName}</Link>
               <span>•</span>
-              <span className="text-neutral-500">{currentTrack.album}</span>
+              {/* Strictly plural /albums/${currentTrack.albumId} */}
+              {currentTrack.albumId ? <Link href={`/albums/${currentTrack.albumId}`} className="hover:text-white underline">{currentTrack.album}</Link> : <span>{currentTrack.album}</span>}
             </div>
-            {/* FIX: Gold VIP Analytics display inside Player Bar */}
             {currentUser?.tier === 'GOLD' && (
               <div className="text-[10px] text-amber-400 font-mono mt-0.5 truncate">
                 ▶ {(currentTrack.totalStreams || currentTrack.listenersCount * 2).toLocaleString()} streams • 👤 {currentTrack.listenersCount.toLocaleString()} unique
@@ -64,6 +65,10 @@ export const PlayerBar: React.FC = () => {
         </div>
 
         <div className="hidden md:flex items-center justify-end space-x-3 w-1/4">
+          {/* Section 9.2 Requirement: Queue Management Drawer Button */}
+          <button onClick={() => setShowQueue(!showQueue)} className={`text-xs px-2.5 py-1 rounded border font-bold transition ${showQueue ? 'bg-green-500 text-black border-green-500' : 'bg-neutral-800 text-neutral-300 hover:text-white border-neutral-700'}`}>
+            📑 Queue ({queue.length})
+          </button>
           {currentTrack.lyrics && (
             <button onClick={() => setShowLyrics(true)} className="text-xs bg-neutral-800 px-2.5 py-1 rounded text-neutral-300 hover:text-white border border-neutral-700">Lyrics</button>
           )}
@@ -75,6 +80,34 @@ export const PlayerBar: React.FC = () => {
           />
         </div>
       </div>
+
+      {/* Section 9.2 Requirement: Up Next Playback Queue Drawer */}
+      {showQueue && (
+        <div className="fixed bottom-16 right-6 w-80 bg-neutral-900 border border-neutral-700 rounded-xl shadow-2xl p-4 z-50 text-left max-h-96 flex flex-col">
+          <div className="flex justify-between items-center border-b border-neutral-800 pb-2 mb-3">
+            <h4 className="text-sm font-bold text-white">Up Next in Queue ({queue.length})</h4>
+            <button onClick={() => setShowQueue(false)} className="text-neutral-500 hover:text-white text-xs">✕</button>
+          </div>
+
+          {queue.length === 0 ? (
+            <p className="text-xs text-neutral-500 py-6 text-center">Your queue is currently empty.</p>
+          ) : (
+            <div className="overflow-y-auto space-y-2 flex-1 pr-1">
+              {queue.map((t, idx) => (
+                <div key={t.id + idx} className="flex items-center justify-between p-2 bg-black/40 rounded border border-neutral-800/60 hover:border-neutral-700 transition">
+                  <div className="truncate pr-2">
+                    <p className="text-xs font-bold text-white truncate">{idx + 1}. {t.title}</p>
+                    <span className="text-[10px] text-neutral-400">{t.artistName}</span>
+                  </div>
+                  <button onClick={() => playTrack(t, queue.slice(idx + 1))} className="text-[11px] bg-green-500/20 text-green-400 font-bold px-2 py-0.5 rounded hover:bg-green-500 hover:text-black transition">
+                    Play
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {showLyrics && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">

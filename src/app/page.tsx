@@ -5,6 +5,7 @@ import { usePlayer } from '@/context/PlayerContext';
 import { getDB } from '@/lib/mockData';
 import { Track, Album, Playlist } from '@/lib/types';
 import { DownloadButton } from '@/components/ui/DownloadButton';
+import { PlaylistMenu } from '@/components/ui/PlaylistMenu';
 import Link from 'next/link';
 
 export default function HomePage() {
@@ -19,13 +20,16 @@ export default function HomePage() {
       setTracks(getDB<Track[]>('db_tracks', []));
       setAlbums(getDB<Album[]>('db_albums', []));
       
+      // STRICTLY isolate playlists by current logged-in user!
       const allPl = getDB<Playlist[]>('db_playlists', []);
+      const myPlaylists = allPl.filter(p => p.ownerId === currentUser.id);
+      
       const userRecentKey = `db_recent_playlists_${currentUser.id}`;
       const recentIds = getDB<string[]>(userRecentKey, []);
-      const foundRecent = recentIds.map(id => allPl.find(p => p.id === id)).filter(Boolean) as Playlist[];
+      const foundRecent = recentIds.map(id => myPlaylists.find(p => p.id === id)).filter(Boolean) as Playlist[];
       
-      // FIX 2: Smart fallback! If recent list is empty, default to showing existing playlists so the section NEVER vanishes!
-      setRecentPlaylists(foundRecent.length > 0 ? foundRecent : allPl.slice(0, 4));
+      // Fallback ONLY to the current user's playlists! Never leaks another user's data!
+      setRecentPlaylists(foundRecent.length > 0 ? foundRecent : myPlaylists.slice(0, 4));
     }
   }, [currentUser]);
 
@@ -82,6 +86,7 @@ export default function HomePage() {
                   </div>
                 </div>
                 <div className="flex items-center space-x-2">
+                  <PlaylistMenu trackId={track.id} />
                   <DownloadButton track={track} />
                   <button onClick={() => playTrack(track, tracks)} className="px-4 py-1.5 bg-amber-400 text-black font-bold text-xs rounded-full hover:bg-amber-300 shadow">Play VIP</button>
                 </div>
@@ -103,7 +108,10 @@ export default function HomePage() {
                     <h4 className="text-sm font-bold text-white truncate">{track.title}</h4>
                     <Link href={`/artist/${track.artistId}`} className="text-xs text-neutral-400 hover:text-white hover:underline block truncate mt-0.5">{track.artistName}</Link>
                   </div>
-                  <DownloadButton track={track} />
+                  <div className="flex items-center space-x-1">
+                    <PlaylistMenu trackId={track.id} />
+                    <DownloadButton track={track} />
+                  </div>
                 </div>
               </div>
               <button onClick={() => playTrack(track, tracks)} className="w-full mt-3 py-1.5 bg-green-500/20 hover:bg-green-500 text-green-400 hover:text-black font-bold text-xs rounded transition">
@@ -118,7 +126,7 @@ export default function HomePage() {
         <h2 className="text-lg font-bold text-white mb-4">Featured Albums (Click to View Tracklist)</h2>
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
           {albums.map(alb => (
-            /* FIX 3: Strictly plural /albums/${alb.id} */
+            /* Strictly plural /albums/${alb.id} */
             <Link key={alb.id} href={`/albums/${alb.id}`} className="bg-neutral-900 border border-neutral-800 p-3 rounded-xl hover:border-neutral-700 transition block group">
               <img src={alb.coverUrl} className="w-full aspect-square rounded-lg object-cover mb-3 group-hover:scale-[1.02] transition" />
               <h4 className="text-sm font-bold text-white truncate group-hover:text-green-400">{alb.title}</h4>
