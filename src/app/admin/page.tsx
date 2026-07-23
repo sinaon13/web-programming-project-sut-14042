@@ -24,7 +24,9 @@ export default function AdminPortalPage() {
     setAllArtists(users.filter(u => u.role === 'ARTIST'));
     setTickets(getDB<Ticket[]>('db_tickets', []));
     setAllTracks(getDB<Track[]>('db_tracks', []));
-    const prices = getDB<'db_prices', { SILVER: number; GOLD: number }>('db_prices', { SILVER: 50000, GOLD: 120000 });
+    
+    // FIX 1: Passed exactly 1 type argument to getDB
+    const prices = getDB<{ SILVER: number; GOLD: number }>('db_prices', { SILVER: 50000, GOLD: 120000 });
     setSilverPrice(prices.SILVER);
     setGoldPrice(prices.GOLD);
   }, []);
@@ -147,7 +149,6 @@ export default function AdminPortalPage() {
 
       {tab === 'ACCOUNTING' && (
         <div className="p-6 bg-neutral-900 border border-neutral-800 rounded-xl shadow-xl">
-          {/* FIX: Removed Section text */}
           <h3 className="text-lg font-bold text-white mb-4">Monthly Financial Accounting & Artist Payouts</h3>
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
@@ -210,12 +211,11 @@ export default function AdminPortalPage() {
           </div>
 
           <div className="p-6 bg-neutral-900 border border-neutral-800 rounded-xl shadow-xl">
-            {/* FIX: Removed Section text */}
             <h3 className="text-lg font-bold text-white mb-6">User Subscription Tier Distribution</h3>
             <div className="h-72 w-full">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
-                  <Pie data={tierData} cx="50%" cy="50%" innerRadius={60} outerRadius={100} paddingAngle={5} dataKey="value" label={({ name, percent }) => `${name} (${(percent * 100).toFixed(0)}%)`}>
+                  <Pie data={tierData} cx="50%" cy="50%" innerRadius={60} outerRadius={100} paddingAngle={5} dataKey="value" label={({ name, percent }) => `${name} (${((percent ?? 0) * 100).toFixed(0)}%)`}>
                     {tierData.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={entry.color} />
                     ))}

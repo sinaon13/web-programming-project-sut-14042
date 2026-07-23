@@ -16,6 +16,7 @@ export default function SettingsPage() {
   const [notifEmail, setNotifEmail] = useState(false);
 
   useEffect(() => {
+    // FIX 1: Passed exactly 1 type argument to getDB
     setPrices(getDB<{ SILVER: number; GOLD: number }>('db_prices', { SILVER: 50000, GOLD: 120000 }));
     const savedVol = localStorage.getItem('sys_default_volume');
     if (savedVol && !isNaN(parseFloat(savedVol))) setVolume(parseFloat(savedVol));
@@ -57,7 +58,6 @@ export default function SettingsPage() {
       </div>
 
       <div className="p-6 bg-neutral-900 border border-neutral-800 rounded-xl space-y-6 shadow-xl">
-        {/* FIX: Removed Section text */}
         <h3 className="font-bold text-white text-md border-b border-neutral-800 pb-3">Platform & Audio Preferences</h3>
         
         <div>
