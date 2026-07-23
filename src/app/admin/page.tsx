@@ -3,10 +3,12 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { getDB, setDB } from '@/lib/mockData';
 import { User, Ticket, AppNotification, Track } from '@/lib/types';
+import { useLanguage } from '@/context/LanguageContext';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
 
 export default function AdminPortalPage() {
   const { currentUser } = useAuth();
+  const { t } = useLanguage();
   const [tab, setTab] = useState<'VERIFY' | 'TICKETS' | 'ACCOUNTING' | 'PRICING'>('VERIFY');
   const [pendingArtists, setPendingArtists] = useState<User[]>([]);
   const [tickets, setTickets] = useState<Ticket[]>([]);
@@ -15,7 +17,9 @@ export default function AdminPortalPage() {
   const [allUsers, setAllUsers] = useState<User[]>([]);
   const [silverPrice, setSilverPrice] = useState(50000);
   const [goldPrice, setGoldPrice] = useState(120000);
-  const [replyText, setReplyText] = useState('');
+  
+  // SOLVED: Replaced single shared string with an object state keyed by ticket.id!
+  const [replyTexts, setReplyTexts] = useState<Record<string, string>>({});
 
   useEffect(() => {
     const users = getDB<User[]>('db_users', []);
@@ -59,19 +63,19 @@ export default function AdminPortalPage() {
   };
 
   const handleReplyTicket = (ticketId: string) => {
-    if (!replyText.trim()) return;
-    const updated = tickets.map(t => t.id === ticketId ? {
-      ...t, status: 'ANSWERED' as const, messages: [...t.messages, { sender: currentUser.name, text: replyText, time: 'Just now' }]
-    } : t);
+    const text = replyTexts[ticketId];
+    if (!text || !text.trim()) return;
+    const updated = tickets.map(tItem => tItem.id === ticketId ? {
+      ...tItem, status: 'ANSWERED' as const, messages: [...tItem.messages, { sender: currentUser.name, text: text.trim(), time: 'Just now' }]
+    } : tItem);
     setTickets(updated);
     setDB('db_tickets', updated);
-    setReplyText('');
+    setReplyTexts({ ...replyTexts, [ticketId]: '' }); // Clears strictly this input!
   };
 
-  // Section 11.2 Requirement: Staff can formally close resolved tickets
   const handleCloseTicket = (ticketId: string) => {
     if (!confirm('Mark this support ticket as formally CLOSED?')) return;
-    const updated = tickets.map(t => t.id === ticketId ? { ...t, status: 'CLOSED' as const } : t);
+    const updated = tickets.map(tItem => tItem.id === ticketId ? { ...tItem, status: 'CLOSED' as const } : tItem);
     setTickets(updated);
     setDB('db_tickets', updated);
   };
@@ -98,13 +102,12 @@ export default function AdminPortalPage() {
   return (
     <div className="space-y-6">
       <div className="flex border-b border-neutral-800 space-x-6 overflow-x-auto">
-        <button onClick={() => setTab('VERIFY')} className={`pb-3 font-bold text-sm ${tab === 'VERIFY' ? 'text-green-500 border-b-2 border-green-500' : 'text-neutral-500'}`}>Verifications ({pendingArtists.length})</button>
-        <button onClick={() => setTab('TICKETS')} className={`pb-3 font-bold text-sm ${tab === 'TICKETS' ? 'text-green-500 border-b-2 border-green-500' : 'text-neutral-500'}`}>Support Tickets ({tickets.length})</button>
-        {/* Section 11.2 Requirement: Support staff NEVER see Financial or Pricing tabs! Strictly for Admin! */}
+        <button onClick={() => setTab('VERIFY')} className={`pb-3 font-bold text-sm ${tab === 'VERIFY' ? 'text-green-500 border-b-2 border-green-500' : 'text-neutral-500'}`}>{t.verificationsTab} ({pendingArtists.length})</button>
+        <button onClick={() => setTab('TICKETS')} className={`pb-3 font-bold text-sm ${tab === 'TICKETS' ? 'text-green-500 border-b-2 border-green-500' : 'text-neutral-500'}`}>{t.ticketsTab} ({tickets.length})</button>
         {currentUser.role === 'ADMIN' && (
           <>
-            <button onClick={() => setTab('ACCOUNTING')} className={`pb-3 font-bold text-sm ${tab === 'ACCOUNTING' ? 'text-green-500 border-b-2 border-green-500' : 'text-neutral-500'}`}>Financial Accounting</button>
-            <button onClick={() => setTab('PRICING')} className={`pb-3 font-bold text-sm ${tab === 'PRICING' ? 'text-amber-400 border-b-2 border-amber-400' : 'text-neutral-500'}`}>Revenue Charts & Pricing</button>
+            <button onClick={() => setTab('ACCOUNTING')} className={`pb-3 font-bold text-sm ${tab === 'ACCOUNTING' ? 'text-green-500 border-b-2 border-green-500' : 'text-neutral-500'}`}>{t.accountingTab}</button>
+            <button onClick={() => setTab('PRICING')} className={`pb-3 font-bold text-sm ${tab === 'PRICING' ? 'text-amber-400 border-b-2 border-amber-400' : 'text-neutral-500'}`}>{t.pricingTab}</button>
           </>
         )}
       </div>
@@ -119,8 +122,8 @@ export default function AdminPortalPage() {
                 <a href={artist.portfolioUrl || '#'} target="_blank" className="text-xs text-blue-400 hover:underline">View Portfolio Sample</a>
               </div>
               <div className="space-x-2">
-                <button onClick={() => handleArtistAction(artist.id, 'APPROVED')} className="px-4 py-1.5 bg-green-500 text-black font-bold text-xs rounded hover:bg-green-400">Approve</button>
-                <button onClick={() => handleArtistAction(artist.id, 'REJECTED')} className="px-4 py-1.5 bg-red-600 text-white font-bold text-xs rounded hover:bg-red-500">Reject</button>
+                <button onClick={() => handleArtistAction(artist.id, 'APPROVED')} className="px-4 py-1.5 bg-green-500 text-black font-bold text-xs rounded hover:bg-green-400">{t.approveBtn}</button>
+                <button onClick={() => handleArtistAction(artist.id, 'REJECTED')} className="px-4 py-1.5 bg-red-600 text-white font-bold text-xs rounded hover:bg-red-500">{t.rejectBtn}</button>
               </div>
             </div>
           ))}
@@ -129,37 +132,43 @@ export default function AdminPortalPage() {
 
       {tab === 'TICKETS' && (
         <div className="space-y-4">
-          {tickets.map(t => (
-            <div key={t.id} className="p-4 bg-neutral-900 border border-neutral-800 rounded-xl space-y-3 shadow-md">
+          {tickets.map(tItem => (
+            <div key={tItem.id} className="p-4 bg-neutral-900 border border-neutral-800 rounded-xl space-y-3 shadow-md">
               <div className="flex justify-between border-b border-neutral-800 pb-2">
                 <div>
-                  <span className="font-mono text-xs font-bold text-green-400 mr-2">{t.ticketNumber}</span>
-                  <span className="font-bold text-white text-sm">{t.subject} (By: {t.userName})</span>
+                  <span className="font-mono text-xs font-bold text-green-400 mr-2">{tItem.ticketNumber}</span>
+                  <span className="font-bold text-white text-sm">{tItem.subject} (By: {tItem.userName})</span>
                 </div>
                 <div className="flex items-center gap-3">
-                  <span className="text-[11px] text-neutral-400">Sent: {t.createdAt}</span>
-                  <span className={`text-[10px] px-2 py-0.5 rounded font-bold ${t.status === 'CLOSED' ? 'bg-red-500/20 text-red-400' : 'bg-green-500/20 text-green-400'}`}>{t.status}</span>
-                  {t.status !== 'CLOSED' && (
-                    <button onClick={() => handleCloseTicket(t.id)} className="text-[10px] bg-neutral-800 hover:bg-red-600/30 text-neutral-300 hover:text-red-300 px-2 py-0.5 rounded border border-neutral-700 transition">
-                      🔒 Close Ticket
+                  <span className="text-[11px] text-neutral-400">Sent: {tItem.createdAt}</span>
+                  <span className={`text-[10px] px-2 py-0.5 rounded font-bold ${tItem.status === 'CLOSED' ? 'bg-red-500/20 text-red-400' : 'bg-green-500/20 text-green-400'}`}>{tItem.status}</span>
+                  {tItem.status !== 'CLOSED' && (
+                    <button onClick={() => handleCloseTicket(tItem.id)} className="text-[10px] bg-neutral-800 hover:bg-red-600/30 text-neutral-300 hover:text-red-300 px-2 py-0.5 rounded border border-neutral-700 transition">
+                      {t.closeTicket}
                     </button>
                   )}
                 </div>
               </div>
               <div className="space-y-2 max-h-40 overflow-y-auto">
-                {t.messages.map((m, idx) => (
+                {tItem.messages.map((m, idx) => (
                   <div key={idx} className="text-xs bg-black/40 p-2 rounded">
                     <span className="font-bold text-green-400">{m.sender}: </span><span className="text-neutral-300">{m.text}</span>
                   </div>
                 ))}
               </div>
-              {t.status !== 'CLOSED' ? (
+              {tItem.status !== 'CLOSED' ? (
                 <div className="flex space-x-2">
-                  <input type="text" placeholder="Type staff reply..." value={replyText} onChange={e => setReplyText(e.target.value)} className="flex-1 p-1.5 bg-neutral-800 border border-neutral-700 rounded text-xs text-white" />
-                  <button onClick={() => handleReplyTicket(t.id)} className="px-4 py-1.5 bg-green-500 text-black font-bold text-xs rounded">Send Reply</button>
+                  <input
+                    type="text"
+                    placeholder={t.typeReply}
+                    value={replyTexts[tItem.id] || ''}
+                    onChange={e => setReplyTexts({ ...replyTexts, [tItem.id]: e.target.value })}
+                    className="flex-1 p-1.5 bg-neutral-800 border border-neutral-700 rounded text-xs text-white"
+                  />
+                  <button onClick={() => handleReplyTicket(tItem.id)} className="px-4 py-1.5 bg-green-500 text-black font-bold text-xs rounded">{t.sendReply}</button>
                 </div>
               ) : (
-                <p className="text-xs text-neutral-500 italic text-center py-1 bg-black/20 rounded">This support ticket has been closed by staff.</p>
+                <p className="text-xs text-neutral-500 italic text-center py-1 bg-black/20 rounded">{t.closedTicketMsg}</p>
               )}
             </div>
           ))}
@@ -183,8 +192,8 @@ export default function AdminPortalPage() {
               </thead>
               <tbody className="divide-y divide-neutral-800/60 text-sm">
                 {allArtists.map(art => {
-                  const artTracks = allTracks.filter(t => t.artistId === art.id);
-                  const totalStreams = artTracks.reduce((sum, t) => sum + (t.totalStreams || t.listenersCount * 2), 0);
+                  const artTracks = allTracks.filter(tItem => tItem.artistId === art.id);
+                  const totalStreams = artTracks.reduce((sum, tItem) => sum + (tItem.totalStreams || tItem.listenersCount * 2), 0);
                   const uniqueListeners = Math.floor(totalStreams * 0.7);
                   const payoutAmount = totalStreams * 25;
                   return (
@@ -195,12 +204,12 @@ export default function AdminPortalPage() {
                       <td className="py-3 font-mono text-amber-400 font-bold">{payoutAmount.toLocaleString()} Toman</td>
                       <td className="py-3">
                         <span className={`text-[11px] font-bold px-2.5 py-1 rounded-full ${art.payoutStatus === 'SETTLED' ? 'bg-green-500/20 text-green-400' : 'bg-amber-500/20 text-amber-400'}`}>
-                          {art.payoutStatus === 'SETTLED' ? 'Settled' : 'In Pending'}
+                          {art.payoutStatus === 'SETTLED' ? t.settled : t.inPending}
                         </span>
                       </td>
                       <td className="py-3">
                         {art.payoutStatus !== 'SETTLED' && (
-                          <button onClick={() => handleSettleArtist(art.id)} className="px-3 py-1 bg-green-500 text-black font-bold text-xs rounded hover:bg-green-400">Confirm Settlement</button>
+                          <button onClick={() => handleSettleArtist(art.id)} className="px-3 py-1 bg-green-500 text-black font-bold text-xs rounded hover:bg-green-400">{t.confirmSettlement}</button>
                         )}
                       </td>
                     </tr>
@@ -234,7 +243,7 @@ export default function AdminPortalPage() {
             <div className="h-72 w-full">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
-                  <Pie data={tierData} cx="50%" cy="50%" innerRadius={60} outerRadius={100} paddingAngle={5} dataKey="value" label={({ name, percent }) => `${name} (${((percent ?? 0) * 100).toFixed(0)}%)`}>
+                  <Pie data={tierData} cx="50%" cy="50%" innerRadius={60} outerRadius={100} paddingAngle={5} dataKey="value" label={({ name, percent }) => `${name} (${(percent * 100).toFixed(0)}%)`}>
                     {tierData.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={entry.color} />
                     ))}
