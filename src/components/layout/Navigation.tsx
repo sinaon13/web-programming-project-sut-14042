@@ -1,14 +1,32 @@
 'use client';
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
 import { usePathname } from 'next/navigation';
-import { useLanguage } from '@/context/LanguageContext'; // 1. Imported Language Hook
+import { useLanguage } from '@/context/LanguageContext';
+import { getDB } from '@/lib/mockData';
+import { AppNotification } from '@/lib/types';
 
 export const Navigation: React.FC = () => {
   const { currentUser, logout } = useAuth();
   const pathname = usePathname();
-  const { t } = useLanguage(); // 2. Grabbed translation object
+  const { t } = useLanguage();
+  const [hasUnreadNotifs, setHasUnreadNotifs] = useState(false);
+
+  // Check for unread notifications on mount and whenever route changes
+  useEffect(() => {
+    if (!currentUser) return;
+    const all = getDB<AppNotification[]>('db_notifications', []);
+    const unread = all.some(n => 
+      !n.isRead && 
+      (
+        n.userId === currentUser.id || 
+        n.userId === 'all' || 
+        (n.userId === 'admin_support' && (currentUser.role === 'ADMIN' || currentUser.role === 'SUPPORT'))
+      )
+    );
+    setHasUnreadNotifs(unread);
+  }, [currentUser, pathname]);
 
   if (!currentUser) return null;
 
@@ -25,7 +43,6 @@ export const Navigation: React.FC = () => {
           </div>
         </div>
 
-        {/* 3. Replaced English words with t.propertyName */}
         <nav className="space-y-1.5 flex flex-col">
           <Link href="/" className={linkClass('/')}><span>{t.home}</span></Link>
           <Link href="/browse" className={linkClass('/browse')}><span>{t.browse}</span></Link>
@@ -34,7 +51,17 @@ export const Navigation: React.FC = () => {
           <Link href="/playlists" className={linkClass('/playlists')}><span>{t.playlists}</span></Link>
           <Link href={`/profile/${currentUser.id}`} className={linkClass(`/profile/${currentUser.id}`)}><span>{t.profile}</span></Link>
           <Link href="/support-tickets" className={linkClass('/support-tickets')}><span>{t.tickets}</span></Link>
-          <Link href="/notifications" className={linkClass('/notifications')}><span>{t.notifications}</span></Link>
+          
+          {/* NOTIFICATIONS LINK WITH PULSING BLUE BADGE */}
+          <Link href="/notifications" className={linkClass('/notifications')}>
+            <span className="flex items-center justify-between w-full">
+              <span>{t.notifications}</span>
+              {hasUnreadNotifs && (
+                <span className="w-2.5 h-2.5 bg-blue-500 rounded-full animate-pulse shadow-sm shadow-blue-500/50 flex-shrink-0 mr-1"></span>
+              )}
+            </span>
+          </Link>
+
           <Link href="/settings" className={linkClass('/settings')}><span>{t.settings}</span></Link>
 
           {currentUser.role === 'ARTIST' && (
