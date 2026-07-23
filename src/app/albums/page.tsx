@@ -2,10 +2,12 @@
 import React, { useState, useEffect } from 'react';
 import { getDB } from '@/lib/mockData';
 import { Album } from '@/lib/types';
+import { useLanguage } from '@/context/LanguageContext'; // Imported
 import Link from 'next/link';
 
 export default function AlbumsArchivePage() {
   const [albums, setAlbums] = useState<Album[]>([]);
+  const { t } = useLanguage(); // Grabbed translations
 
   useEffect(() => {
     setAlbums(getDB<Album[]>('db_albums', []));
@@ -14,8 +16,8 @@ export default function AlbumsArchivePage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-white mb-1">Albums Archive</h1>
-        <p className="text-xs text-neutral-400">Explore full discography releases from verified platform artists.</p>
+        <h1 className="text-2xl font-bold text-white mb-1">{t.albumsArchiveTitle}</h1>
+        <p className="text-xs text-neutral-400">{t.albumsArchiveDesc}</p>
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-6">

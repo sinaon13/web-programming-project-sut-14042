@@ -3,10 +3,12 @@ import React, { useState, useEffect } from 'react';
 import { getDB, setDB } from '@/lib/mockData';
 import { AppNotification } from '@/lib/types';
 import { useAuth } from '@/context/AuthContext';
+import { useLanguage } from '@/context/LanguageContext'; // Imported
 import Link from 'next/link';
 
 export default function NotificationsPage() {
   const { currentUser } = useAuth();
+  const { t } = useLanguage(); // Grabbed translations
   const [notifs, setNotifs] = useState<AppNotification[]>([]);
 
   useEffect(() => {
@@ -40,13 +42,12 @@ export default function NotificationsPage() {
   return (
     <div className="max-w-2xl mx-auto space-y-4">
       <div className="flex justify-between items-center mb-6">
-        {/* FIX: Removed Section text */}
-        <h2 className="text-xl font-bold text-white">System Notifications</h2>
-        <button onClick={markAllRead} className="text-xs text-green-400 font-bold hover:underline">Mark All as Read</button>
+        <h2 className="text-xl font-bold text-white">{t.sysNotificationsTitle}</h2>
+        <button onClick={markAllRead} className="text-xs text-green-400 font-bold hover:underline">{t.markAllRead}</button>
       </div>
 
       {notifs.length === 0 ? (
-        <div className="p-12 text-center bg-neutral-900 border border-neutral-800 rounded-xl text-neutral-400 text-sm">No system notifications.</div>
+        <div className="p-12 text-center bg-neutral-900 border border-neutral-800 rounded-xl text-neutral-400 text-sm">{t.noNotifs}</div>
       ) : (
         notifs.map(n => (
           <div key={n.id} className={`p-4 rounded-xl border flex justify-between items-start transition shadow-md ${n.isRead ? 'bg-neutral-900 border-neutral-800 opacity-75' : 'bg-neutral-800/90 border-green-500/60'}`}>
@@ -57,16 +58,16 @@ export default function NotificationsPage() {
                 <span className="text-[10px] text-neutral-400">{n.timestamp}</span>
               </div>
               <p className="text-xs text-neutral-300 mt-1 leading-relaxed">{n.message}</p>
-              {n.targetUrl && <Link href={n.targetUrl} className="text-[11px] text-green-400 font-bold hover:underline block mt-2">View Details ➡️</Link>}
+              {n.targetUrl && <Link href={n.targetUrl} className="text-[11px] text-green-400 font-bold hover:underline block mt-2">{t.viewDetails}</Link>}
             </div>
             
             <div className="flex flex-col items-end space-y-2 flex-shrink-0">
               {!n.isRead && (
                 <button onClick={() => markSingleRead(n.id)} className="text-[11px] bg-green-500/20 text-green-400 hover:bg-green-500 hover:text-black font-bold px-2 py-1 rounded transition">
-                  ✓ Mark Read
+                  {t.markReadBtn}
                 </button>
               )}
-              <button onClick={() => deleteNotif(n.id)} className="text-xs text-neutral-500 hover:text-red-400 transition">Delete</button>
+              <button onClick={() => deleteNotif(n.id)} className="text-xs text-neutral-500 hover:text-red-400 transition">{t.deleteNotifBtn}</button>
             </div>
           </div>
         ))

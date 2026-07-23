@@ -1,12 +1,12 @@
 import './globals.css';
 import { AuthProvider } from '@/context/AuthContext';
 import { PlayerProvider } from '@/context/PlayerContext';
+import { LanguageProvider } from '@/context/LanguageContext'; // 1. Import it
 import { Navigation } from '@/components/layout/Navigation';
 import { PlayerBar } from '@/components/player/PlayerBar';
 import { PwaRegistry } from '@/components/pwa/PwaRegistry';
 import type { Metadata, Viewport } from 'next';
 
-// PWA Viewport Configuration
 export const viewport: Viewport = {
   themeColor: '#22c55e',
   width: 'device-width',
@@ -14,7 +14,6 @@ export const viewport: Viewport = {
   maximumScale: 1,
 };
 
-// PWA Manifest & Metadata Linking
 export const metadata: Metadata = {
   title: 'Spotify Clone - Web Programming Project',
   description: 'Music streaming platform with VIP tiers and artist analytics.',
@@ -31,17 +30,18 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en">
       <body className="bg-black text-white min-h-screen flex flex-col font-sans">
         <AuthProvider>
-          <PlayerProvider>
-            {/* Activates background Service Worker */}
-            <PwaRegistry />
-            <div className="flex flex-col md:flex-row flex-1 pb-24">
-              <Navigation />
-              <main className="flex-1 p-6 overflow-y-auto max-w-7xl mx-auto w-full">
-                {children}
-              </main>
-            </div>
-            <PlayerBar />
-          </PlayerProvider>
+          <LanguageProvider> {/* 2. Wrap here */}
+            <PlayerProvider>
+              <PwaRegistry />
+              <div className="flex flex-col md:flex-row flex-1 pb-24">
+                <Navigation />
+                <main className="flex-1 p-6 overflow-y-auto max-w-7xl mx-auto w-full">
+                  {children}
+                </main>
+              </div>
+              <PlayerBar />
+            </PlayerProvider>
+          </LanguageProvider>
         </AuthProvider>
       </body>
     </html>
