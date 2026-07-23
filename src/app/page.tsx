@@ -1,0 +1,84 @@
+'use client';
+import React, { useState, useEffect } from 'react';
+import { useAuth } from '@/context/AuthContext';
+import { usePlayer } from '@/context/PlayerContext';
+import { getDB } from '@/lib/mockData';
+import { Track, Album } from '@/lib/types';
+import Link from 'next/link';
+
+export default function HomePage() {
+  const { currentUser } = useAuth();
+  const { playTrack } = usePlayer();
+  const [tracks, setTracks] = useState<Track[]>([]);
+  const [albums, setAlbums] = useState<Album[]>([]);
+
+  useEffect(() => {
+    setTracks(getDB<Track[]>('db_tracks', []));
+    setAlbums(getDB<Album[]>('db_albums', []));
+  }, []);
+
+  if (!currentUser) return <div className="text-center py-12"><Link href="/login" className="text-green-400 font-bold underline">Log in to continue</Link></div>;
+
+  const standardTracks = tracks.filter(t => !t.isEarlyAccess);
+  const earlyAccessTracks = tracks.filter(t => t.isEarlyAccess);
+
+  return (
+    <div className="space-y-8">
+      <div>
+        <h1 className="text-2xl font-bold text-white mb-1">Welcome back, {currentUser.name}</h1>
+        <p className="text-xs text-neutral-400">Discover top trending albums and tracks on the platform.</p>
+      </div>
+
+      {currentUser.tier === 'GOLD' && earlyAccessTracks.length > 0 && (
+        <div className="p-6 bg-gradient-to-r from-amber-500/20 to-neutral-900 border border-amber-500/40 rounded-xl shadow-lg">
+          <h2 className="text-md font-bold text-amber-400 mb-4 flex items-center gap-2">⭐ VIP Gold Exclusive: Early Access Releases</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {earlyAccessTracks.map(track => (
+              <div key={track.id} className="flex items-center justify-between p-3 bg-black/40 border border-amber-500/20 rounded-lg">
+                <div className="flex items-center space-x-3">
+                  <img src={track.coverUrl} className="w-12 h-12 rounded object-cover" />
+                  <div>
+                    <h4 className="text-sm font-bold text-white">{track.title}</h4>
+                    <Link href={`/artist/${track.artistId}`} className="text-xs text-amber-300 hover:underline block">{track.artistName}</Link>
+                  </div>
+                </div>
+                <button onClick={() => playTrack(track, tracks)} className="px-4 py-1.5 bg-amber-400 text-black font-bold text-xs rounded-full hover:bg-amber-300 shadow">Play VIP</button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div>
+        <h2 className="text-lg font-bold text-white mb-4">Popular Releases</h2>
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+          {standardTracks.map(track => (
+            <div key={track.id} className="bg-neutral-900 border border-neutral-800 p-3 rounded-xl hover:border-neutral-700 transition flex flex-col justify-between">
+              <div>
+                <img src={track.coverUrl} className="w-full aspect-square rounded-lg object-cover mb-3" />
+                <h4 className="text-sm font-bold text-white truncate">{track.title}</h4>
+                <Link href={`/artist/${track.artistId}`} className="text-xs text-neutral-400 hover:text-white hover:underline block truncate mt-0.5">{track.artistName}</Link>
+              </div>
+              <button onClick={() => playTrack(track, tracks)} className="w-full mt-3 py-1.5 bg-green-500/20 hover:bg-green-500 text-green-400 hover:text-black font-bold text-xs rounded transition">
+                Play Track
+              </button>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div>
+        <h2 className="text-lg font-bold text-white mb-4">Featured Albums (Click to View Tracklist)</h2>
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+          {albums.map(alb => (
+            <Link key={alb.id} href={`/album/${alb.id}`} className="bg-neutral-900 border border-neutral-800 p-3 rounded-xl hover:border-neutral-700 transition block group">
+              <img src={alb.coverUrl} className="w-full aspect-square rounded-lg object-cover mb-3 group-hover:scale-[1.02] transition" />
+              <h4 className="text-sm font-bold text-white truncate group-hover:text-green-400">{alb.title}</h4>
+              <span className="text-xs text-neutral-400 block truncate">{alb.artistName}</span>
+            </Link>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}

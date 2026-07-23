@@ -1,0 +1,59 @@
+'use client';
+import React from 'react';
+import Link from 'next/link';
+import { useAuth } from '@/context/AuthContext';
+import { usePathname } from 'next/navigation';
+
+export const Navigation: React.FC = () => {
+  const { currentUser, logout } = useAuth();
+  const pathname = usePathname();
+
+  if (!currentUser) return null;
+
+  const linkClass = (path: string) => `p-2.5 rounded text-sm font-medium transition flex items-center justify-between ${pathname === path ? 'bg-neutral-800 text-green-400 font-bold' : 'text-neutral-300 hover:text-white hover:bg-neutral-800/60'}`;
+
+  return (
+    <aside className="w-full md:w-64 bg-neutral-900 border-r border-neutral-800 flex flex-col justify-between p-4 flex-shrink-0">
+      <div>
+        <div className="flex items-center space-x-3 mb-8 p-2 border-b border-neutral-800 pb-4">
+          <img src={currentUser.avatar} alt="Avatar" className="w-11 h-11 rounded-full border-2 border-green-500 object-cover" />
+          <div className="truncate">
+            <h3 className="font-bold text-white text-sm truncate">{currentUser.name}</h3>
+            <span className="text-[11px] text-green-400 font-semibold uppercase block">{currentUser.role} • {currentUser.tier}</span>
+          </div>
+        </div>
+
+        <nav className="space-y-1.5 flex flex-col">
+          <Link href="/" className={linkClass('/')}><span>Home</span></Link>
+          <Link href="/browse" className={linkClass('/browse')}><span>Browse All Music</span></Link>
+          <Link href="/albums" className={linkClass('/albums')}><span>💿 Albums Archive</span></Link>
+          <Link href="/singles" className={linkClass('/singles')}><span>🎵 Singles Archive</span></Link>
+          <Link href="/playlists" className={linkClass('/playlists')}><span>My Playlists</span></Link>
+          <Link href={`/profile/${currentUser.id}`} className={linkClass(`/profile/${currentUser.id}`)}><span>My Profile</span></Link>
+          <Link href="/support-tickets" className={linkClass('/support-tickets')}><span>🎧 Support Tickets</span></Link>
+          <Link href="/notifications" className={linkClass('/notifications')}><span>Notifications</span></Link>
+          <Link href="/settings" className={linkClass('/settings')}><span>Settings</span></Link>
+
+          {currentUser.role === 'ARTIST' && (
+            <Link href="/artist-portal" className="p-2.5 mt-4 bg-amber-500/10 border border-amber-500/40 text-amber-400 hover:bg-amber-500/20 rounded text-sm font-bold flex items-center justify-between">
+              <span>Artist Studio</span>
+              <span className="text-xs">⚡</span>
+            </Link>
+          )}
+
+          {(currentUser.role === 'SUPPORT' || currentUser.role === 'ADMIN') && (
+            <Link href="/admin" className="p-2.5 mt-4 bg-purple-500/10 border border-purple-500/40 text-purple-400 hover:bg-purple-500/20 rounded text-sm font-bold flex items-center justify-between">
+              <span>Admin Dashboard</span>
+              <span className="text-xs">🛡️</span>
+            </Link>
+          )}
+        </nav>
+      </div>
+
+      <button onClick={logout} className="w-full mt-6 p-2.5 bg-red-600/20 text-red-400 hover:bg-red-600/30 rounded text-sm font-semibold text-left transition flex items-center justify-between">
+        <span>Log Out</span>
+        <span>➡️</span>
+      </button>
+    </aside>
+  );
+};
