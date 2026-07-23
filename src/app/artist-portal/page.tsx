@@ -10,7 +10,7 @@ export default function ArtistPortalPage() {
   const { t } = useLanguage();
   const [title, setTitle] = useState('');
   const [album, setAlbum] = useState('');
-  const [coverUrl, setCoverUrl] = useState(''); // NEW: Custom cover photo URL
+  const [coverUrl, setCoverUrl] = useState('');
   const [lyrics, setLyrics] = useState('');
   const [genre, setGenre] = useState('Pop');
   const [releaseType, setReleaseType] = useState<'SINGLE' | 'ALBUM'>('SINGLE');
@@ -55,33 +55,51 @@ export default function ArtistPortalPage() {
 
   const handlePublishOrUpdate = (e: React.FormEvent) => {
     e.preventDefault();
-    const allTracks = getDB<Track[]>('db_tracks', []);
+    let allTracks = getDB<Track[]>('db_tracks', []);
     const defaultCover = 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=300';
-    const finalCover = coverUrl.trim() || defaultCover;
-
-    // DYNAMIC ALBUM GENERATION ENGINE: Guarantee album exists in db_albums!
+    let targetCoverUrl = coverUrl.trim() || defaultCover;
     let targetAlbumId = '';
+
+    // ALBUM COVER LOCK ENGINE: Guarantee identical artwork across all album tracks!
     if (releaseType === 'ALBUM') {
       const allAlbums = getDB<Album[]>('db_albums', []);
       const albumNameStr = album.trim() || 'Untitled Album';
       let existingAlbum = allAlbums.find(a => a.title.toLowerCase() === albumNameStr.toLowerCase() && a.artistId === currentUser.id);
       
       if (!existingAlbum) {
+        // Album created for the first time! Lock in targetCoverUrl as official artwork.
         existingAlbum = {
           id: 'alb_' + Date.now(),
           title: albumNameStr,
           artistId: currentUser.id,
           artistName: currentUser.name,
-          coverUrl: finalCover,
+          coverUrl: targetCoverUrl,
           releaseDate: new Date().toISOString().split('T')[0],
           genre
         };
         setDB('db_albums', [existingAlbum, ...allAlbums]);
-      } else if (coverUrl.trim() && coverUrl.trim() !== existingAlbum.coverUrl) {
-        existingAlbum.coverUrl = finalCover;
-        setDB('db_albums', allAlbums.map(a => a.id === existingAlbum!.id ? existingAlbum! : a));
+      } else {
+        // Album ALREADY EXISTS!
+        if (coverUrl.trim() && coverUrl.trim() !== existingAlbum.coverUrl) {
+          // If artist explicitly provided a NEW custom cover, update official Album AND cascade to every track!
+          targetCoverUrl = coverUrl.trim();
+          existingAlbum.coverUrl = targetCoverUrl;
+          setDB('db_albums', allAlbums.map(a => a.id === existingAlbum!.id ? existingAlbum! : a));
+        } else {
+          // Otherwise, LOCK the track's cover strictly to the established official album artwork!
+          targetCoverUrl = existingAlbum.coverUrl;
+        }
       }
       targetAlbumId = existingAlbum.id;
+
+      // Force EVERY SINGLE TRACK belonging to this album to share targetCoverUrl
+      allTracks = allTracks.map(tItem => {
+        if (tItem.albumId === existingAlbum!.id || (tItem.album?.toLowerCase() === albumNameStr.toLowerCase() && tItem.artistId === currentUser.id)) {
+          return { ...tItem, coverUrl: targetCoverUrl, albumId: existingAlbum!.id, album: existingAlbum!.title };
+        }
+        return tItem;
+      });
+      setDB('db_tracks', allTracks);
     }
 
     if (editingTrackId) {
@@ -92,7 +110,7 @@ export default function ArtistPortalPage() {
           title,
           album: releaseType === 'ALBUM' ? (album || 'Untitled Album') : 'Single Release',
           albumId: targetAlbumId || undefined,
-          coverUrl: finalCover,
+          coverUrl: targetCoverUrl,
           isEarlyAccess,
           lyrics,
           genre,
@@ -104,7 +122,7 @@ export default function ArtistPortalPage() {
       });
       setDB('db_tracks', updated);
       setMyTracks(updated.filter(tItem => tItem.artistId === currentUser.id));
-      alert('✅ Track updated successfully!');
+      alert('✅ Track updated! Artwork is locked across the entire album.');
       setEditingTrackId(null);
     } else {
       const newTrack: Track = {
@@ -114,7 +132,7 @@ export default function ArtistPortalPage() {
         artistName: currentUser.name,
         album: releaseType === 'ALBUM' ? (album || 'Untitled Album') : 'Single Release',
         albumId: targetAlbumId || undefined,
-        coverUrl: finalCover,
+        coverUrl: targetCoverUrl,
         audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3',
         listenersCount: 1,
         totalStreams: 1,
@@ -130,7 +148,7 @@ export default function ArtistPortalPage() {
       const updated = [newTrack, ...allTracks];
       setDB('db_tracks', updated);
       setMyTracks([newTrack, ...myTracks]);
-      alert('✅ Track published successfully! Available across all archives.');
+      alert('✅ Track published! Artwork is locked across the entire album.');
     }
 
     setTitle(''); setAlbum(''); setCoverUrl(''); setLyrics(''); setCollaborators(''); setIsEarlyAccess(false);
