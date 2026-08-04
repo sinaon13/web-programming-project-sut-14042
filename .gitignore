@@ -10,6 +10,9 @@
 !.yarn/releases
 !.yarn/versions
 
+# PDFs
+*.pdf
+
 # testing
 /coverage
 
