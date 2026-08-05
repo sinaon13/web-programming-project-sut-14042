@@ -2,6 +2,7 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { Track } from '@/lib/types';
 import { getDB, setDB } from '@/lib/mockData';
+import { musicAPI } from '@/lib/api';
 
 type RepeatMode = 'OFF' | 'PLAYLIST' | 'TRACK';
 
@@ -106,12 +107,10 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     if (idx !== -1) {
       setQueue(activePlaylist.slice(idx + 1));
     } else {
-      // If track is clicked from queue, find it in the current queue and update upcoming queue accordingly
       const qIdx = queue.findIndex(t => t.id === track.id);
       if (qIdx !== -1) {
         setQueue(queue.slice(qIdx + 1));
       } else {
-        // Fallback: If not found anywhere, keep existing queue or set empty
         setQueue([]);
       }
     }
@@ -124,7 +123,12 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       audioRef.current.play().catch(() => setIsPlaying(false));
     }
 
-    // Register analytics stream count
+    // 1. Send Stream Log to Django Backend (enforces daily stream limits & increments denormalized counters)
+    musicAPI.streamTrack(track.id).catch(err => {
+      console.warn('Backend stream logging fallback:', err.message);
+    });
+
+    // 2. Offline / Local fallback analytics
     const allTracks = getDB<Track[]>('db_tracks', []);
     const updatedTracks = allTracks.map(t => {
       if (t.id === track.id) {

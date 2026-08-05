@@ -1,5 +1,6 @@
 'use client';
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { authAPI, getAccessToken } from '@/lib/api';
 
 type Language = 'en' | 'fa';
 
@@ -302,8 +303,8 @@ const dictionary = {
     ticketsTab: 'تیکت‌های پشتیبانی',
     accountingTab: 'حسابرسی مالی',
     pricingTab: 'قیمت‌گذاری و نمودار درآمد',
-    approveBtn: 'تایید حساب',
-    rejectBtn: 'رد درخواست',
+    approveBtn: 'Approve',
+    rejectBtn: 'Reject',
     typeReply: 'تایپ پاسخ پشتیبان...',
     sendReply: 'ارسال پاسخ',
     closeTicket: '🔒 بستن تیکت',
@@ -333,6 +334,20 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       document.documentElement.dir = saved === 'fa' ? 'rtl' : 'ltr';
       document.documentElement.lang = saved;
     }
+
+    // Try syncing with Django backend if user is logged in
+    if (getAccessToken()) {
+      authAPI.getPreferences()
+        .then(prefs => {
+          if (prefs.language && (prefs.language === 'en' || prefs.language === 'fa')) {
+            setLanguageState(prefs.language);
+            localStorage.setItem('app_lang', prefs.language);
+            document.documentElement.dir = prefs.language === 'fa' ? 'rtl' : 'ltr';
+            document.documentElement.lang = prefs.language;
+          }
+        })
+        .catch(() => {});
+    }
   }, []);
 
   const setLanguage = (lang: Language) => {
@@ -340,6 +355,11 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     localStorage.setItem('app_lang', lang);
     document.documentElement.dir = lang === 'fa' ? 'rtl' : 'ltr';
     document.documentElement.lang = lang;
+
+    // Sync to Django UserPreferences if authenticated
+    if (getAccessToken()) {
+      authAPI.updatePreferences({ language: lang }).catch(() => {});
+    }
   };
 
   return (
