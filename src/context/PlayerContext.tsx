@@ -1,10 +1,11 @@
 'use client';
-import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
 import { Track } from '@/lib/types';
 import { getDB, setDB } from '@/lib/mockData';
 import { musicAPI } from '@/lib/api';
 
 type RepeatMode = 'OFF' | 'PLAYLIST' | 'TRACK';
+type AudioQuality = 'LOW' | 'HIGH';
 
 interface PlayerContextType {
   currentTrack: Track | null;
@@ -16,6 +17,10 @@ interface PlayerContextType {
   isShuffle: boolean;
   queue: Track[];
   playlist: Track[];
+  // Advanced player features (bonus)
+  audioQuality: AudioQuality;
+  crossfadeEnabled: boolean;
+  accentColor: string;
   playTrack: (track: Track, list?: Track[]) => void;
   togglePlay: () => void;
   nextTrack: () => void;
@@ -25,9 +30,60 @@ interface PlayerContextType {
   toggleRepeat: () => void;
   toggleShuffle: () => void;
   stopAndClosePlayer: () => void;
+  setAudioQuality: (q: AudioQuality) => void;
+  toggleCrossfade: () => void;
 }
 
 const PlayerContext = createContext<PlayerContextType | null>(null);
+
+/**
+ * Extract a dominant color from an image URL using a canvas.
+ * Returns an HSL string for use as an accent color.
+ */
+function extractDominantColor(imageUrl: string): Promise<string> {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      try {
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        if (!ctx) { resolve('#22c55e'); return; }
+        canvas.width = 8;
+        canvas.height = 8;
+        ctx.drawImage(img, 0, 0, 8, 8);
+        const data = ctx.getImageData(0, 0, 8, 8).data;
+        let r = 0, g = 0, b = 0, count = 0;
+        for (let i = 0; i < data.length; i += 4) {
+          // Skip near-black and near-white pixels
+          if (data[i] + data[i+1] + data[i+2] < 60) continue;
+          if (data[i] + data[i+1] + data[i+2] > 700) continue;
+          r += data[i]; g += data[i+1]; b += data[i+2]; count++;
+        }
+        if (count === 0) { resolve('#22c55e'); return; }
+        r = Math.round(r / count);
+        g = Math.round(g / count);
+        b = Math.round(b / count);
+        // Boost saturation for a more vibrant accent
+        const max = Math.max(r, g, b), min = Math.min(r, g, b);
+        const l = (max + min) / 510;
+        let s = 0, h = 0;
+        if (max !== min) {
+          s = l > 0.5 ? (max - min) / (510 - max - min) : (max - min) / (max + min);
+          if (max === r) h = ((g - b) / (max - min)) * 60;
+          else if (max === g) h = (2 + (b - r) / (max - min)) * 60;
+          else h = (4 + (r - g) / (max - min)) * 60;
+          if (h < 0) h += 360;
+        }
+        resolve(`hsl(${Math.round(h)}, ${Math.round(Math.min(s * 100, 80))}%, ${Math.round(Math.min(l * 100 + 15, 65))}%)`);
+      } catch {
+        resolve('#22c55e');
+      }
+    };
+    img.onerror = () => resolve('#22c55e');
+    img.src = imageUrl;
+  });
+}
 
 export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [currentTrack, setCurrentTrack] = useState<Track | null>(null);
@@ -39,12 +95,20 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [isShuffle, setIsShuffle] = useState(false);
   const [playlist, setPlaylist] = useState<Track[]>([]);
   const [queue, setQueue] = useState<Track[]>([]);
+  // Advanced player state
+  const [audioQuality, setAudioQualityState] = useState<AudioQuality>('HIGH');
+  const [crossfadeEnabled, setCrossfadeEnabled] = useState(false);
+  const [accentColor, setAccentColor] = useState('#22c55e');
   
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const crossfadeAudioRef = useRef<HTMLAudioElement | null>(null);
+  const crossfadeIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
     audioRef.current = new Audio();
     audioRef.current.volume = volume;
+    crossfadeAudioRef.current = new Audio();
+    crossfadeAudioRef.current.volume = 0;
 
     const handleTimeUpdate = () => {
       if (audioRef.current) setProgress(audioRef.current.currentTime);
@@ -72,13 +136,93 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         audioRef.current.removeEventListener('loadedmetadata', handleLoadedMetadata);
         audioRef.current.removeEventListener('ended', handleEnded);
       }
+      if (crossfadeAudioRef.current) {
+        crossfadeAudioRef.current.pause();
+      }
+      if (crossfadeIntervalRef.current) {
+        clearInterval(crossfadeIntervalRef.current);
+      }
       window.removeEventListener('auth_logout', handleLogoutShutdown);
     };
   }, []);
 
+  // Crossfade: monitor time remaining and start fading when < 5 seconds left
+  useEffect(() => {
+    if (!crossfadeEnabled || !audioRef.current) return;
+
+    const checkCrossfade = () => {
+      if (!audioRef.current || !currentTrack) return;
+      const timeLeft = (audioRef.current.duration || 0) - audioRef.current.currentTime;
+
+      if (timeLeft > 0 && timeLeft <= 5 && !crossfadeIntervalRef.current) {
+        // Find the next track
+        const currentIdx = playlist.findIndex(t => t.id === currentTrack.id);
+        let nextIdx = -1;
+        if (isShuffle) {
+          nextIdx = Math.floor(Math.random() * playlist.length);
+        } else if (currentIdx < playlist.length - 1) {
+          nextIdx = currentIdx + 1;
+        } else if (repeatMode === 'PLAYLIST') {
+          nextIdx = 0;
+        }
+
+        if (nextIdx >= 0 && crossfadeAudioRef.current) {
+          const nextT = playlist[nextIdx];
+          crossfadeAudioRef.current.src = nextT.audioUrl || 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3';
+          crossfadeAudioRef.current.volume = 0;
+          crossfadeAudioRef.current.play().catch(() => {});
+
+          // 5-second crossfade: outgoing volume down, incoming volume up
+          const fadeSteps = 50; // 50 steps over 5 seconds = every 100ms
+          let step = 0;
+          crossfadeIntervalRef.current = setInterval(() => {
+            step++;
+            const ratio = step / fadeSteps;
+            if (audioRef.current) audioRef.current.volume = Math.max(0, volume * (1 - ratio));
+            if (crossfadeAudioRef.current) crossfadeAudioRef.current.volume = Math.min(volume, volume * ratio);
+            if (step >= fadeSteps) {
+              if (crossfadeIntervalRef.current) clearInterval(crossfadeIntervalRef.current);
+              crossfadeIntervalRef.current = null;
+            }
+          }, 100);
+        }
+      }
+    };
+
+    const interval = setInterval(checkCrossfade, 500);
+    return () => clearInterval(interval);
+  }, [crossfadeEnabled, currentTrack, playlist, isShuffle, repeatMode, volume]);
+
   const setVolume = (vol: number) => {
     setVolumeState(vol);
     if (audioRef.current) audioRef.current.volume = vol;
+  };
+
+  const setAudioQuality = (q: AudioQuality) => {
+    setAudioQualityState(q);
+    // In a real app, this would switch the audio source URL to a different bitrate version.
+    // Since we don't have separate files, we simulate the change by briefly pausing/resuming
+    // to indicate the quality has changed. The UI will reflect the selection immediately.
+    if (audioRef.current && currentTrack) {
+      const currentTime = audioRef.current.currentTime;
+      // Re-set the source (in production this would be a different URL per quality)
+      audioRef.current.src = currentTrack.audioUrl || 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3';
+      audioRef.current.currentTime = currentTime;
+      if (isPlaying) audioRef.current.play().catch(() => {});
+    }
+  };
+
+  const toggleCrossfade = () => {
+    setCrossfadeEnabled(prev => !prev);
+    // Clean up any active crossfade
+    if (crossfadeIntervalRef.current) {
+      clearInterval(crossfadeIntervalRef.current);
+      crossfadeIntervalRef.current = null;
+    }
+    if (crossfadeAudioRef.current) {
+      crossfadeAudioRef.current.pause();
+      crossfadeAudioRef.current.volume = 0;
+    }
   };
 
   const stopAndClosePlayer = () => {
@@ -86,16 +230,24 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       audioRef.current.pause();
       audioRef.current.currentTime = 0;
     }
+    if (crossfadeAudioRef.current) {
+      crossfadeAudioRef.current.pause();
+    }
+    if (crossfadeIntervalRef.current) {
+      clearInterval(crossfadeIntervalRef.current);
+      crossfadeIntervalRef.current = null;
+    }
     setIsPlaying(false);
     setCurrentTrack(null);
     setProgress(0);
     setDuration(0);
     setPlaylist([]);
     setQueue([]);
+    setAccentColor('#22c55e');
   };
 
   // ROBUST PLAY TRACK & QUEUE SYNC ENGINE
-  const playTrack = (track: Track, list: Track[] = []) => {
+  const playTrack = useCallback((track: Track, list: Track[] = []) => {
     let activePlaylist = playlist;
     if (list.length > 0) {
       activePlaylist = list;
@@ -115,12 +267,34 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       }
     }
 
+    // If crossfade was active, swap the incoming audio to primary
+    if (crossfadeEnabled && crossfadeAudioRef.current && crossfadeAudioRef.current.src && !crossfadeAudioRef.current.paused) {
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.src = crossfadeAudioRef.current.src;
+        audioRef.current.currentTime = crossfadeAudioRef.current.currentTime;
+        audioRef.current.volume = volume;
+        audioRef.current.play().catch(() => setIsPlaying(false));
+      }
+      crossfadeAudioRef.current.pause();
+      crossfadeAudioRef.current.volume = 0;
+    } else if (audioRef.current) {
+      audioRef.current.src = track.audioUrl || 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3';
+      audioRef.current.volume = volume;
+      audioRef.current.play().catch(() => setIsPlaying(false));
+    }
+
+    if (crossfadeIntervalRef.current) {
+      clearInterval(crossfadeIntervalRef.current);
+      crossfadeIntervalRef.current = null;
+    }
+
     setCurrentTrack(track);
     setIsPlaying(true);
 
-    if (audioRef.current) {
-      audioRef.current.src = track.audioUrl || 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3';
-      audioRef.current.play().catch(() => setIsPlaying(false));
+    // Extract accent color from cover art
+    if (track.coverUrl) {
+      extractDominantColor(track.coverUrl).then(setAccentColor).catch(() => setAccentColor('#22c55e'));
     }
 
     // 1. Send Stream Log to Django Backend (enforces daily stream limits & increments denormalized counters)
@@ -140,7 +314,7 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       });
       setDB('db_tracks', updatedTracks);
     });
-  };
+  }, [playlist, queue, crossfadeEnabled, volume]);
 
   const togglePlay = () => {
     if (!currentTrack || !audioRef.current) return;
@@ -231,6 +405,9 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       isShuffle,
       queue,
       playlist,
+      audioQuality,
+      crossfadeEnabled,
+      accentColor,
       playTrack,
       togglePlay,
       nextTrack,
@@ -239,7 +416,9 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       setVolume,
       toggleRepeat,
       toggleShuffle,
-      stopAndClosePlayer
+      stopAndClosePlayer,
+      setAudioQuality,
+      toggleCrossfade
     }}>
       {children}
     </PlayerContext.Provider>

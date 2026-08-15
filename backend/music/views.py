@@ -19,13 +19,11 @@ from .serializers import (
     TrackUploadSerializer,
 )
 
-# Daily stream limits per subscription tier
+# Daily stream limits per subscription tier (from project doc table)
 DAILY_STREAM_LIMITS = {
-    'FREE': 200,
-    'REGULAR': 1000,
-    'PREMIUM': None,   # unlimited
-    'FAMILY': None,
-    'STUDENT': 500,
+    'BASIC': 60,      # Basic (free) tier: 60 streams/day
+    'SILVER': None,    # Silver tier: unlimited
+    'GOLD': None,      # Gold tier: unlimited
 }
 
 
@@ -95,8 +93,8 @@ class TrackStreamView(APIView):
         track = get_object_or_404(Track, pk=pk)
         user = request.user
 
-        # Determine user's tier (default FREE if no subscription)
-        tier = 'FREE'
+        # Determine user's tier (default BASIC if no subscription)
+        tier = 'BASIC'
         if hasattr(user, 'subscription'):
             sub = user.subscription
             if sub and sub.is_active and sub.plan:

@@ -6,11 +6,9 @@ class SubscriptionPlan(models.Model):
     """Available subscription tiers."""
 
     class Tier(models.TextChoices):
-        FREE = 'FREE', 'Free'
-        REGULAR = 'REGULAR', 'Regular'
-        PREMIUM = 'PREMIUM', 'Premium'
-        FAMILY = 'FAMILY', 'Family'
-        STUDENT = 'STUDENT', 'Student'
+        BASIC = 'BASIC', 'Basic (Free)'
+        SILVER = 'SILVER', 'Silver'
+        GOLD = 'GOLD', 'Gold'
 
     name = models.CharField(max_length=100)
     tier = models.CharField(max_length=10, choices=Tier.choices, unique=True)

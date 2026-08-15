@@ -21,11 +21,11 @@ class SubscriptionTests(TestCase):
             role=User.Role.ADMIN,
         )
         self.free_plan = SubscriptionPlan.objects.create(
-            name='Free', tier='FREE', price=0, duration_days=9999,
-            daily_stream_limit=200, max_playlists=5,
+            name='Basic', tier='BASIC', price=0, duration_days=9999,
+            daily_stream_limit=60, max_playlists=6,
         )
         self.premium_plan = SubscriptionPlan.objects.create(
-            name='Premium', tier='PREMIUM', price=99000, duration_days=30,
+            name='Gold', tier='GOLD', price=99000, duration_days=30,
         )
 
     # ---- Test 1: List plans ----

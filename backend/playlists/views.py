@@ -13,13 +13,11 @@ from .serializers import (
     AddTrackToPlaylistSerializer,
 )
 
-# Playlist limits by subscription tier
+# Playlist limits by subscription tier (from project doc table)
 PLAYLIST_LIMITS = {
-    'FREE': 5,
-    'REGULAR': 20,
-    'PREMIUM': None,   # unlimited
-    'FAMILY': None,
-    'STUDENT': 15,
+    'BASIC': 6,        # Basic (free) tier: max 6 playlists
+    'SILVER': 100,     # Silver tier: max 100 playlists
+    'GOLD': None,      # Gold tier: unlimited
 }
 
 
@@ -46,7 +44,7 @@ class PlaylistListCreateView(generics.ListCreateAPIView):
         user = self.request.user
 
         # Check playlist limit based on tier
-        tier = 'FREE'
+        tier = 'BASIC'
         if hasattr(user, 'subscription'):
             sub = user.subscription
             if sub and sub.is_active and sub.plan:

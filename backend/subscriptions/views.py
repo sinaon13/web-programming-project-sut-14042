@@ -50,7 +50,7 @@ class MySubscriptionView(generics.RetrieveAPIView):
             return super().retrieve(request, *args, **kwargs)
         except Exception:
             return Response(
-                {'detail': 'No active subscription found.', 'tier': 'FREE'},
+                {'detail': 'No active subscription found.', 'tier': 'BASIC'},
                 status=status.HTTP_200_OK,
             )
 
