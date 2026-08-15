@@ -21,7 +21,7 @@ export default function RegisterPage() {
   const { register } = useAuth();
   const router = useRouter();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (password !== confirmPassword) {
       setError('Passwords do not match. Please re-type your password.');
@@ -31,7 +31,7 @@ export default function RegisterPage() {
       setError('You must accept the Privacy Policy to proceed.');
       return;
     }
-    register(name, email, tab as Role, birthDate, gender, tab === 'ARTIST' ? portfolio : undefined);
+    await register(name, email, tab as Role, birthDate, gender, tab === 'ARTIST' ? portfolio : undefined, password);
     router.push('/');
   };
 

@@ -1,19 +1,18 @@
 from django.urls import path
-
-# TODO [Commit 1]: Wire up account views
-# Expected endpoints:
-#   POST   register/
-#   POST   register/artist/
-#   GET    me/
-#   PATCH  me/
-#   DELETE me/
-#   GET    users/<int:pk>/
-#   POST   users/<int:pk>/follow/
-#   DELETE users/<int:pk>/follow/
-#   GET    preferences/
-#   PATCH  preferences/
+from .views import (
+    RegisterView,
+    ArtistRegisterView,
+    ProfileView,
+    PublicUserView,
+    FollowView,
+    UserPreferencesView,
+)
 
 urlpatterns = [
-    # path('register/', RegisterView.as_view(), name='register'),
-    # ...
+    path('register/', RegisterView.as_view(), name='register'),
+    path('register/artist/', ArtistRegisterView.as_view(), name='register-artist'),
+    path('me/', ProfileView.as_view(), name='profile'),
+    path('users/<int:pk>/', PublicUserView.as_view(), name='public-user'),
+    path('users/<int:pk>/follow/', FollowView.as_view(), name='follow'),
+    path('preferences/', UserPreferencesView.as_view(), name='preferences'),
 ]

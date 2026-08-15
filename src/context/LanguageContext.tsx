@@ -4,7 +4,7 @@ import { authAPI, getAccessToken } from '@/lib/api';
 
 type Language = 'en' | 'fa';
 
-const dictionary = {
+export const dictionary = {
   en: {
     // Navigation & Sidebar
     home: 'Home',

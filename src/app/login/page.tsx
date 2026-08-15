@@ -12,10 +12,14 @@ export default function LoginPage() {
   const { login } = useAuth();
   const router = useRouter();
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (login(email)) router.push('/');
-    else setError('User not found. Try: user@test.com, artist@test.com, rejected@test.com, support@test.com, or admin@test.com');
+    const success = await login(email, password);
+    if (success) {
+      router.push('/');
+    } else {
+      setError('User not found. Try: user@test.com, artist@test.com, rejected@test.com, support@test.com, or admin@test.com');
+    }
   };
 
   return (

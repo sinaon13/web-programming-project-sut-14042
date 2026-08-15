@@ -1,6 +1,6 @@
 import { User, Track, Album, Playlist, AppNotification, Ticket } from './types';
 
-const INITIAL_USERS: User[] = [
+export const INITIAL_USERS: User[] = [
   { id: 'u1', email: 'user@test.com', name: 'Ali Reza', role: 'LISTENER', tier: 'GOLD', avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150', followersCount: 12, followingCount: 4, dailyStreams: 15, birthDate: '1998-04-12', gender: 'MALE' },
   { id: 'a1', email: 'artist@test.com', name: 'Salar Aghili', role: 'ARTIST', tier: 'GOLD', avatar: 'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?w=150', followersCount: 45000, followingCount: 10, dailyStreams: 120000, status: 'APPROVED', bio: 'Renowned traditional Persian vocal master with over 20 years of classical performance experience.', payoutStatus: 'PENDING' },
   { id: 'a2', email: 'pending@test.com', name: 'Novice Singer', role: 'ARTIST', tier: 'BASIC', avatar: 'https://images.unsplash.com/photo-1527980965255-d3b416303d12?w=150', followersCount: 0, followingCount: 0, dailyStreams: 0, status: 'PENDING', portfolioUrl: 'https://soundcloud.com/sample', bio: 'Aspiring pop singer from Tehran.' },
@@ -9,11 +9,11 @@ const INITIAL_USERS: User[] = [
   { id: 'admin1', email: 'admin@test.com', name: 'System Admin', role: 'ADMIN', tier: 'GOLD', avatar: 'https://images.unsplash.com/photo-1633332755192-727a05c4013d?w=150', followersCount: 100, followingCount: 100, dailyStreams: 50 }
 ];
 
-const INITIAL_ALBUMS: Album[] = [
+export const INITIAL_ALBUMS: Album[] = [
   { id: 'alb1', title: 'Tradition & Heritage', artistId: 'a1', artistName: 'Salar Aghili', coverUrl: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=300', releaseDate: '2026-05-10', genre: 'Traditional Persian' }
 ];
 
-const INITIAL_TRACKS: Track[] = [
+export const INITIAL_TRACKS: Track[] = [
   { id: 't1', title: 'Persian Gulf', artistId: 'a1', artistName: 'Salar Aghili', album: 'Tradition & Heritage', albumId: 'alb1', coverUrl: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=300', audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3', listenersCount: 84000, totalStreams: 210000, releaseDate: '2026-05-10', isEarlyAccess: false, lyrics: 'O Persian Gulf, eternal heritage...', releaseType: 'ALBUM', releaseYear: 2026, genre: 'Traditional', fileFormat: 'FLAC' },
   { id: 't2', title: 'Midnight Shiraz (VIP Only)', artistId: 'a1', artistName: 'Salar Aghili', album: 'Tradition & Heritage', albumId: 'alb1', coverUrl: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=300', audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3', listenersCount: 1200, totalStreams: 3400, releaseDate: '2026-07-01', isEarlyAccess: true, lyrics: 'Under the starlit sky of Shiraz...', releaseType: 'ALBUM', releaseYear: 2026, genre: 'Traditional', fileFormat: 'WAV' },
   { id: 't3', title: 'Tehran Nights (Single)', artistId: 'a1', artistName: 'Salar Aghili', album: 'Single Release', coverUrl: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=300', audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3', listenersCount: 15400, totalStreams: 42000, releaseDate: '2026-06-15', isEarlyAccess: false, releaseType: 'SINGLE', releaseYear: 2026, genre: 'Pop Classical', fileFormat: 'MP3' }

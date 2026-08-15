@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, fireEvent, act } from '@testing-library/react';
+import { render, screen, waitFor, act } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { AuthProvider, useAuth } from '@/context/AuthContext';
 import { DownloadButton } from '@/components/ui/DownloadButton';
@@ -44,24 +44,42 @@ describe('VIP Gold Download Restriction Tests', () => {
     jest.spyOn(window, 'alert').mockImplementation(() => {});
   });
 
-  it('9. renders download button with appropriate Gold tooltip', () => {
+  it('9. renders download button with appropriate Gold tooltip', async () => {
     render(<AuthProvider><UserSimulator /></AuthProvider>);
-    act(() => { screen.getByText('Login Gold VIP').click(); });
-    const dlBtn = screen.getByText('⬇️');
-    expect(dlBtn).toHaveAttribute('title', 'Download Track');
+    await act(async () => {
+      screen.getByText('Login Gold VIP').click();
+    });
+    await waitFor(() => {
+      const dlBtn = screen.getByText('⬇️');
+      expect(dlBtn).toHaveAttribute('title', 'Download Track');
+    });
   });
 
-  it('10. allows file downloading for Gold VIP subscribers without blocking', () => {
+  it('10. allows file downloading for Gold VIP subscribers without blocking', async () => {
     render(<AuthProvider><UserSimulator /></AuthProvider>);
-    act(() => { screen.getByText('Login Gold VIP').click(); });
-    act(() => { screen.getByText('⬇️').click(); });
+    await act(async () => {
+      screen.getByText('Login Gold VIP').click();
+    });
+    await waitFor(() => {
+      expect(screen.getByText('⬇️')).toHaveAttribute('title', 'Download Track');
+    });
+    await act(async () => {
+      screen.getByText('⬇️').click();
+    });
     expect(window.alert).toHaveBeenCalledWith(expect.stringContaining('Downloading: "VIP Exclusive Track"'));
   });
 
-  it('11. intercepts download attempt for Basic Free tier users and prompts tier upgrade', () => {
+  it('11. intercepts download attempt for Basic Free tier users and prompts tier upgrade', async () => {
     render(<AuthProvider><UserSimulator /></AuthProvider>);
-    act(() => { screen.getByText('Register Basic Free').click(); });
-    act(() => { screen.getByText('⬇️').click(); });
+    await act(async () => {
+      screen.getByText('Register Basic Free').click();
+    });
+    await waitFor(() => {
+      expect(screen.getByText('⬇️')).toHaveAttribute('title', 'Gold VIP Exclusive - Upgrade to Download');
+    });
+    await act(async () => {
+      screen.getByText('⬇️').click();
+    });
     expect(window.confirm).toHaveBeenCalledWith(expect.stringContaining('Song downloading is strictly exclusive to Gold VIP subscribers!'));
   });
 });

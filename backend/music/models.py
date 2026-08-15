@@ -51,6 +51,9 @@ class Track(models.Model):
     listeners_count = models.IntegerField(default=0)
     total_streams = models.IntegerField(default=0)
 
+    class Meta:
+        ordering = ['-release_date', '-id']
+
     def __str__(self):
         return f'{self.title} — {self.artist.display_name}'
 

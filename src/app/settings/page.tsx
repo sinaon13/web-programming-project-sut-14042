@@ -62,7 +62,7 @@ export default function SettingsPage() {
 
     // 5. If Artist, cleanly delete all their published Tracks & Albums!
     if (currentUser.role === 'ARTIST') {
-      const tracks = getDB<Track[]>('db_tracks', []).filter(tr => tk => tr.artistId !== uId);
+      const tracks = getDB<Track[]>('db_tracks', []).filter(tr => tr.artistId !== uId);
       setDB('db_tracks', tracks);
       const albums = getDB<Album[]>('db_albums', []).filter(a => a.artistId !== uId);
       setDB('db_albums', albums);

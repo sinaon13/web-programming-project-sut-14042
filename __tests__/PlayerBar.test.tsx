@@ -1,8 +1,9 @@
 import React from 'react';
-import { render, screen, fireEvent, act } from '@testing-library/react';
+import { render, screen, act } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { PlayerProvider, usePlayer } from '@/context/PlayerContext';
 import { AuthProvider } from '@/context/AuthContext';
+import { LanguageProvider } from '@/context/LanguageContext';
 import { PlayerBar } from '@/components/player/PlayerBar';
 import { Track } from '@/lib/types';
 
@@ -41,6 +42,16 @@ const PlayerTrigger = () => {
   );
 };
 
+const TestWrapper: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+  <AuthProvider>
+    <LanguageProvider>
+      <PlayerProvider>
+        {children}
+      </PlayerProvider>
+    </LanguageProvider>
+  </AuthProvider>
+);
+
 describe('Audio Player Controls & UI Tests', () => {
   beforeEach(() => {
     window.HTMLAudioElement.prototype.play = jest.fn().mockResolvedValue(undefined);
@@ -48,14 +59,14 @@ describe('Audio Player Controls & UI Tests', () => {
   });
 
   it('5. renders track metadata correctly when playback begins', () => {
-    render(<AuthProvider><PlayerProvider><PlayerTrigger /><PlayerBar /></PlayerProvider></AuthProvider>);
+    render(<TestWrapper><PlayerTrigger /><PlayerBar /></TestWrapper>);
     act(() => { screen.getByText('Play Track').click(); });
     expect(screen.getByText('Test Symphony')).toBeInTheDocument();
     expect(screen.getByText('Test Artist')).toBeInTheDocument();
   });
 
   it('6. cycles through Repeat modes (OFF -> PLAYLIST -> TRACK)', () => {
-    render(<AuthProvider><PlayerProvider><PlayerTrigger /></PlayerProvider></AuthProvider>);
+    render(<TestWrapper><PlayerTrigger /></TestWrapper>);
     expect(screen.getByTestId('rep-mode')).toHaveTextContent('OFF');
     act(() => { screen.getByText('Toggle Repeat').click(); });
     expect(screen.getByTestId('rep-mode')).toHaveTextContent('PLAYLIST');
@@ -64,14 +75,14 @@ describe('Audio Player Controls & UI Tests', () => {
   });
 
   it('7. toggles Shuffle state on click', () => {
-    render(<AuthProvider><PlayerProvider><PlayerTrigger /></PlayerProvider></AuthProvider>);
+    render(<TestWrapper><PlayerTrigger /></TestWrapper>);
     expect(screen.getByTestId('shuf-mode')).toHaveTextContent('OFF');
     act(() => { screen.getByText('Toggle Shuffle').click(); });
     expect(screen.getByTestId('shuf-mode')).toHaveTextContent('ON');
   });
 
   it('8. opens and closes the Lyrics modal on demand', () => {
-    render(<AuthProvider><PlayerProvider><PlayerTrigger /><PlayerBar /></PlayerProvider></AuthProvider>);
+    render(<TestWrapper><PlayerTrigger /><PlayerBar /></TestWrapper>);
     act(() => { screen.getByText('Play Track').click(); });
     const lyricsBtn = screen.getByText('Lyrics');
     act(() => { lyricsBtn.click(); });
