@@ -5,20 +5,34 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
 export default function LoginPage() {
-  const [email, setEmail] = useState('user@test.com');
-  const [password, setPassword] = useState('123456');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
   const [showForgot, setShowForgot] = useState(false);
   const { login } = useAuth();
   const router = useRouter();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    const success = await login(email, password);
-    if (success) {
-      router.push('/');
-    } else {
-      setError('User not found. Try: user@test.com, artist@test.com, rejected@test.com, support@test.com, or admin@test.com');
+    setError('');
+    setLoading(true);
+    try {
+      const success = await login(email, password);
+      if (success) {
+        router.push('/');
+      }
+    } catch (err: any) {
+      const msg = err?.message || 'Login failed';
+      if (msg.includes('fetch') || msg.includes('Failed to fetch') || msg.includes('NetworkError')) {
+        setError('⚠️ Backend server is not running. Start Django with: uv run python manage.py runserver');
+      } else if (msg.includes('401') || msg.includes('No active account') || msg.includes('credentials')) {
+        setError('Invalid email or password. Please check your credentials.');
+      } else {
+        setError(msg);
+      }
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -30,13 +44,13 @@ export default function LoginPage() {
       <form onSubmit={handleLogin} className="space-y-4">
         <div>
           <label className="block text-xs font-semibold text-neutral-400 mb-1">Email Address</label>
-          <input type="email" value={email} onChange={e => setEmail(e.target.value)} required className="w-full p-2.5 bg-neutral-800 border border-neutral-700 rounded text-sm text-white font-mono" />
+          <input type="email" value={email} onChange={e => setEmail(e.target.value)} required placeholder="you@example.com" className="w-full p-2.5 bg-neutral-800 border border-neutral-700 rounded text-sm text-white font-mono" />
         </div>
         <div>
           <label className="block text-xs font-semibold text-neutral-400 mb-1">Password</label>
-          <input type="password" value={password} onChange={e => setPassword(e.target.value)} required className="w-full p-2.5 bg-neutral-800 border border-neutral-700 rounded text-sm text-white" />
+          <input type="password" value={password} onChange={e => setPassword(e.target.value)} required placeholder="Min. 8 characters" className="w-full p-2.5 bg-neutral-800 border border-neutral-700 rounded text-sm text-white" />
         </div>
-        <button type="submit" className="w-full py-2.5 bg-green-500 hover:bg-green-400 text-black font-bold rounded text-sm transition mt-2 shadow">Sign In</button>
+        <button type="submit" disabled={loading} className="w-full py-2.5 bg-green-500 hover:bg-green-400 text-black font-bold rounded text-sm transition mt-2 shadow disabled:opacity-50">{loading ? 'Signing in...' : 'Sign In'}</button>
       </form>
 
       <div className="mt-4 flex justify-between text-xs text-neutral-400">

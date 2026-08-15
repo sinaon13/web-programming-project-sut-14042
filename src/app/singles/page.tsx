@@ -1,26 +1,42 @@
 'use client';
 import React, { useState, useEffect } from 'react';
-import { getDB } from '@/lib/mockData';
+import { musicAPI } from '@/lib/api';
+import { getDB, setDB } from '@/lib/mockData';
 import { Track } from '@/lib/types';
 import { usePlayer } from '@/context/PlayerContext';
 import { useAuth } from '@/context/AuthContext';
 import { useLanguage } from '@/context/LanguageContext';
 import { DownloadButton } from '@/components/ui/DownloadButton';
+import { BackendOfflineBanner } from '@/components/ui/BackendOfflineBanner';
 import Link from 'next/link';
 
 export default function SinglesArchivePage() {
   const [singles, setSingles] = useState<Track[]>([]);
+  const [backendOffline, setBackendOffline] = useState(false);
   const { playTrack } = usePlayer();
   const { currentUser } = useAuth();
   const { t } = useLanguage();
 
   useEffect(() => {
-    const all = getDB<Track[]>('db_tracks', []);
-    setSingles(all.filter(tItem => tItem.releaseType === 'SINGLE' || !tItem.albumId));
+    const load = async () => {
+      try {
+        const res = await musicAPI.getTracks();
+        const trks = (res as any).results || (Array.isArray(res) ? res : []);
+        setDB('db_tracks', trks);
+        setSingles(trks.filter((tItem: Track) => tItem.releaseType === 'SINGLE' || !tItem.albumId));
+        setBackendOffline(false);
+      } catch {
+        const all = getDB<Track[]>('db_tracks', []);
+        setSingles(all.filter(tItem => tItem.releaseType === 'SINGLE' || !tItem.albumId));
+        setBackendOffline(true);
+      }
+    };
+    load();
   }, []);
 
   return (
     <div className="space-y-6">
+      <BackendOfflineBanner show={backendOffline} />
       <div>
         <h1 className="text-2xl font-bold text-white mb-1">{t.singlesArchiveTitle}</h1>
         <p className="text-xs text-neutral-400">{t.singlesArchiveDesc}</p>

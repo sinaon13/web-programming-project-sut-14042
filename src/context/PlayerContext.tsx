@@ -126,21 +126,20 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     // 1. Send Stream Log to Django Backend (enforces daily stream limits & increments denormalized counters)
     musicAPI.streamTrack(track.id).catch(err => {
       console.warn('Backend stream logging fallback:', err.message);
+      // 2. Offline / Local fallback analytics
+      const allTracks = getDB<Track[]>('db_tracks', []);
+      const updatedTracks = allTracks.map(t => {
+        if (t.id === track.id) {
+          return {
+            ...t,
+            totalStreams: (t.totalStreams || t.listenersCount * 2) + 1,
+            listenersCount: t.listenersCount + 1
+          };
+        }
+        return t;
+      });
+      setDB('db_tracks', updatedTracks);
     });
-
-    // 2. Offline / Local fallback analytics
-    const allTracks = getDB<Track[]>('db_tracks', []);
-    const updatedTracks = allTracks.map(t => {
-      if (t.id === track.id) {
-        return {
-          ...t,
-          totalStreams: (t.totalStreams || t.listenersCount * 2) + 1,
-          listenersCount: t.listenersCount + 1
-        };
-      }
-      return t;
-    });
-    setDB('db_tracks', updatedTracks);
   };
 
   const togglePlay = () => {

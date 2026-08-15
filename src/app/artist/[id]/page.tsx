@@ -1,11 +1,13 @@
 'use client';
 import React, { useState, useEffect } from 'react';
-import { getDB } from '@/lib/mockData';
+import { musicAPI, authAPI } from '@/lib/api';
+import { getDB, setDB } from '@/lib/mockData';
 import { User, Track, Album } from '@/lib/types';
 import { useAuth } from '@/context/AuthContext';
 import { usePlayer } from '@/context/PlayerContext';
 import { useLanguage } from '@/context/LanguageContext';
 import { DownloadButton } from '@/components/ui/DownloadButton';
+import { BackendOfflineBanner } from '@/components/ui/BackendOfflineBanner';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 
@@ -18,23 +20,46 @@ export default function ArtistProfilePage() {
   const [artist, setArtist] = useState<User | null>(null);
   const [artistTracks, setArtistTracks] = useState<Track[]>([]);
   const [artistAlbums, setArtistAlbums] = useState<Album[]>([]);
+  const [backendOffline, setBackendOffline] = useState(false);
 
   useEffect(() => {
-    const users = getDB<User[]>('db_users', []);
-    const found = users.find(u => u.id === id && u.role === 'ARTIST');
-    if (found) {
-      setArtist(found);
-      const tracks = getDB<Track[]>('db_tracks', []);
-      setArtistTracks(tracks.filter(tItem => tItem.artistId === id));
-      const albums = getDB<Album[]>('db_albums', []);
-      setArtistAlbums(albums.filter(a => a.artistId === id));
-    }
+    if (!id) return;
+    
+    const load = async () => {
+      try {
+        const u = await authAPI.getPublicUser(id as string);
+        setArtist(u as any);
+        
+        const trRes = await musicAPI.getTracks({ artist: id as string });
+        const trks = (trRes as any).results || (Array.isArray(trRes) ? trRes : []);
+        setArtistTracks(trks);
+        
+        const alRes = await musicAPI.getAlbums({ artist: id as string });
+        const albs = (alRes as any).results || (Array.isArray(alRes) ? alRes : []);
+        setArtistAlbums(albs);
+        
+        setBackendOffline(false);
+      } catch {
+        const users = getDB<User[]>('db_users', []);
+        const found = users.find(u => u.id === id && u.role === 'ARTIST');
+        if (found) {
+          setArtist(found);
+          const tracks = getDB<Track[]>('db_tracks', []);
+          setArtistTracks(tracks.filter(tItem => tItem.artistId === id));
+          const albums = getDB<Album[]>('db_albums', []);
+          setArtistAlbums(albums.filter(a => a.artistId === id));
+        }
+        setBackendOffline(true);
+      }
+    };
+    load();
   }, [id]);
 
   if (!artist) return <div className="text-center py-16 text-neutral-400">Artist profile not found.</div>;
 
   return (
     <div className="space-y-8">
+      <BackendOfflineBanner show={backendOffline} />
       <div className="p-8 bg-gradient-to-b from-neutral-800 to-neutral-900 border border-neutral-800 rounded-2xl flex items-center justify-between shadow-xl">
         <div className="flex items-center space-x-6 truncate">
           <img src={artist.avatar} className="w-24 h-24 rounded-full object-cover border-2 border-green-500 shadow-md flex-shrink-0" />

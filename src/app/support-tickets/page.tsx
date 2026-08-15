@@ -1,62 +1,61 @@
 'use client';
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
+import { supportAPI } from '@/lib/api';
 import { getDB, setDB } from '@/lib/mockData';
 import { Ticket, AppNotification } from '@/lib/types';
-import { useLanguage } from '@/context/LanguageContext'; // Imported
+import { useLanguage } from '@/context/LanguageContext';
+import { BackendOfflineBanner } from '@/components/ui/BackendOfflineBanner';
 
 export default function SupportTicketsPage() {
   const { currentUser } = useAuth();
-  const { t } = useLanguage(); // Grabbed translations
+  const { t } = useLanguage();
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [subject, setSubject] = useState('');
   const [message, setMessage] = useState('');
+  const [backendOffline, setBackendOffline] = useState(false);
 
   useEffect(() => {
-    if (currentUser) {
-      const all = getDB<Ticket[]>('db_tickets', []);
-      setTickets(all.filter(tItem => tItem.userId === currentUser.id));
-    }
+    if (!currentUser) return;
+    
+    const load = async () => {
+      try {
+        const res = await supportAPI.getTickets();
+        const results = (res as any).results || (Array.isArray(res) ? res : []);
+        setTickets(results);
+        setDB('db_tickets', results);
+        setBackendOffline(false);
+      } catch {
+        const all = getDB<Ticket[]>('db_tickets', []);
+        setTickets(all.filter(tItem => tItem.userId === currentUser.id));
+        setBackendOffline(true);
+      }
+    };
+    load();
   }, [currentUser]);
 
   if (!currentUser) return null;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const tNum = `#TK-${Math.floor(1000 + Math.random() * 9000)}`;
-    const newTicket: Ticket = {
-      id: 'tk_' + Date.now(),
-      ticketNumber: tNum,
-      userId: currentUser.id,
-      userName: currentUser.name,
-      subject,
-      status: 'OPEN',
-      createdAt: new Date().toISOString().replace('T', ' ').slice(0, 16),
-      messages: [{ sender: currentUser.name, text: message, time: 'Just now' }]
-    };
-    const updated = [newTicket, ...tickets];
-    setTickets(updated);
-    const all = getDB<Ticket[]>('db_tickets', []);
-    setDB('db_tickets', [newTicket, ...all]);
-
-    const notifs = getDB<AppNotification[]>('db_notifications', []);
-    const adminNotif: AppNotification = {
-      id: 'n_' + Date.now(),
-      userId: 'admin_support',
-      title: `🎧 New Support Ticket Submitted (${tNum})`,
-      message: `User ${currentUser.name}: "${subject}"`,
-      isRead: false,
-      timestamp: 'Just now',
-      targetUrl: '/admin'
-    };
-    setDB('db_notifications', [adminNotif, ...notifs]);
-
-    setSubject(''); setMessage('');
-    alert('✅ Support ticket submitted successfully! Staff has been notified.');
+    try {
+      await supportAPI.createTicket(subject, message);
+      const res = await supportAPI.getTickets();
+      const results = (res as any).results || (Array.isArray(res) ? res : []);
+      setTickets(results);
+      setDB('db_tickets', results);
+      
+      setSubject(''); setMessage('');
+      setBackendOffline(false);
+      alert('✅ Support ticket submitted successfully! Staff has been notified.');
+    } catch {
+      alert('Backend offline. Cannot submit ticket.');
+    }
   };
 
   return (
     <div className="space-y-8 max-w-3xl mx-auto">
+      <BackendOfflineBanner show={backendOffline} />
       <div className="p-6 bg-neutral-900 border border-neutral-800 rounded-xl shadow-xl">
         <h2 className="text-lg font-bold text-white mb-2">{t.supportTicketsTitle}</h2>
         <p className="text-xs text-neutral-400 mb-4">{t.supportTicketsDesc}</p>

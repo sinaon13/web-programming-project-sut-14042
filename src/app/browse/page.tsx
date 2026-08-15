@@ -1,12 +1,14 @@
 'use client';
 import React, { useState, useEffect } from 'react';
-import { getDB } from '@/lib/mockData';
+import { musicAPI } from '@/lib/api';
+import { getDB, setDB } from '@/lib/mockData';
 import { Track } from '@/lib/types';
 import { usePlayer } from '@/context/PlayerContext';
 import { useAuth } from '@/context/AuthContext';
 import { useLanguage } from '@/context/LanguageContext';
 import { DownloadButton } from '@/components/ui/DownloadButton';
 import { PlaylistMenu } from '@/components/ui/PlaylistMenu';
+import { BackendOfflineBanner } from '@/components/ui/BackendOfflineBanner';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 
@@ -15,13 +17,26 @@ export default function BrowsePage() {
   const [sortBy, setSortBy] = useState<'LISTENERS' | 'DATE'>('LISTENERS');
   const [allTracks, setAllTracks] = useState<Track[]>([]);
   const [showVipModal, setShowVipModal] = useState(false);
+  const [backendOffline, setBackendOffline] = useState(false);
   const { playTrack } = usePlayer();
   const { currentUser } = useAuth();
   const { t } = useLanguage();
   const router = useRouter();
 
   useEffect(() => {
-    setAllTracks(getDB<Track[]>('db_tracks', []));
+    const load = async () => {
+      try {
+        const res = await musicAPI.getTracks();
+        const trks = (res as any).results || (Array.isArray(res) ? res : []);
+        setAllTracks(trks);
+        setDB('db_tracks', trks);
+        setBackendOffline(false);
+      } catch {
+        setAllTracks(getDB<Track[]>('db_tracks', []));
+        setBackendOffline(true);
+      }
+    };
+    load();
   }, []);
 
   const handlePlayAttempt = (track: Track, list: Track[]) => {
@@ -38,6 +53,7 @@ export default function BrowsePage() {
 
   return (
     <div className="space-y-6">
+      <BackendOfflineBanner show={backendOffline} />
       <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
         <input
           type="text" placeholder={t.searchPlaceholder} value={query} onChange={e => setQuery(e.target.value)}

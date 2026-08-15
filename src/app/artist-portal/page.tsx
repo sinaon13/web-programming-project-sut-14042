@@ -1,9 +1,11 @@
 'use client';
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
+import { musicAPI } from '@/lib/api';
 import { getDB, setDB } from '@/lib/mockData';
 import { Track, User, Album } from '@/lib/types';
 import { useLanguage } from '@/context/LanguageContext';
+import { BackendOfflineBanner } from '@/components/ui/BackendOfflineBanner';
 
 export default function ArtistPortalPage() {
   const { currentUser, updateUser } = useAuth();
@@ -21,19 +23,32 @@ export default function ArtistPortalPage() {
   const [myTracks, setMyTracks] = useState<Track[]>([]);
   const [bio, setBio] = useState('');
   const [editingTrackId, setEditingTrackId] = useState<string | null>(null);
+  const [backendOffline, setBackendOffline] = useState(false);
 
   useEffect(() => {
-    if (currentUser) {
-      const allUsers = getDB<User[]>('db_users', []);
-      const freshUser = allUsers.find(u => u.id === currentUser.id);
-      if (freshUser && freshUser.status !== currentUser.status) {
-        updateUser({ status: freshUser.status, rejectionReason: freshUser.rejectionReason });
+    if (!currentUser) return;
+    
+    const load = async () => {
+      try {
+        const trRes = await musicAPI.getTracks();
+        const allTracks = (trRes as any).results || (Array.isArray(trRes) ? trRes : []);
+        setMyTracks(allTracks.filter((tItem: Track) => tItem.artistId === currentUser.id));
+        setDB('db_tracks', allTracks);
+        setBackendOffline(false);
+      } catch {
+        const allTracks = getDB<Track[]>('db_tracks', []);
+        setMyTracks(allTracks.filter(tItem => tItem.artistId === currentUser.id));
+        setBackendOffline(true);
       }
-      setBio(freshUser?.bio || currentUser.bio || '');
-      
-      const allTracks = getDB<Track[]>('db_tracks', []);
-      setMyTracks(allTracks.filter(tItem => tItem.artistId === currentUser.id));
+    };
+    load();
+
+    const allUsers = getDB<User[]>('db_users', []);
+    const freshUser = allUsers.find(u => u.id === currentUser.id);
+    if (freshUser && freshUser.status !== currentUser.status) {
+      updateUser({ status: freshUser.status, rejectionReason: freshUser.rejectionReason });
     }
+    setBio(freshUser?.bio || currentUser.bio || '');
   }, [currentUser]);
 
   if (currentUser?.role !== 'ARTIST') return <div className="p-4 bg-red-900/20 text-red-400 rounded">Access Restricted to Verified Artists</div>;
@@ -189,6 +204,7 @@ export default function ArtistPortalPage() {
 
   return (
     <div className="space-y-8 max-w-4xl mx-auto">
+      <BackendOfflineBanner show={backendOffline} />
       <div className="p-6 bg-neutral-900 border border-neutral-800 rounded-xl space-y-4 shadow-xl">
         <h3 className="font-bold text-white text-md">{t.bioSettings}</h3>
         <textarea rows={3} placeholder={t.bioPlaceholder} value={bio} onChange={e => setBio(e.target.value)} className="w-full p-2.5 bg-neutral-800 border border-neutral-700 rounded text-sm text-white" />

@@ -1,10 +1,12 @@
 'use client';
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
+import { playlistsAPI, musicAPI } from '@/lib/api';
 import { getDB, setDB } from '@/lib/mockData';
 import { Playlist, Track } from '@/lib/types';
 import { usePlayer } from '@/context/PlayerContext';
-import { useLanguage } from '@/context/LanguageContext'; // Imported
+import { useLanguage } from '@/context/LanguageContext';
+import { BackendOfflineBanner } from '@/components/ui/BackendOfflineBanner';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 
@@ -16,53 +18,94 @@ export default function PlaylistsPage() {
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
   const [name, setName] = useState('');
   const [allTracks, setAllTracks] = useState<Track[]>([]);
+  const [backendOffline, setBackendOffline] = useState(false);
 
   useEffect(() => {
-    if (currentUser) {
-      const allPl = getDB<Playlist[]>('db_playlists', []);
-      setPlaylists(allPl.filter(p => p.ownerId === currentUser.id));
-      setAllTracks(getDB<Track[]>('db_tracks', []));
-    }
+    if (!currentUser) return;
+    
+    const load = async () => {
+      try {
+        const plRes = await playlistsAPI.getPlaylists();
+        const trRes = await musicAPI.getTracks();
+        const pls = (plRes as any).results || (Array.isArray(plRes) ? plRes : []);
+        const trks = (trRes as any).results || (Array.isArray(trRes) ? trRes : []);
+        setPlaylists(pls);
+        setAllTracks(trks);
+        setDB('db_playlists', pls);
+        setDB('db_tracks', trks);
+        setBackendOffline(false);
+      } catch {
+        const allPl = getDB<Playlist[]>('db_playlists', []);
+        setPlaylists(allPl.filter(p => p.ownerId === currentUser.id));
+        setAllTracks(getDB<Track[]>('db_tracks', []));
+        setBackendOffline(true);
+      }
+    };
+    load();
   }, [currentUser]);
 
   if (!currentUser) return null;
 
   const maxPlaylists = currentUser.tier === 'BASIC' ? 6 : currentUser.tier === 'SILVER' ? 100 : 9999;
 
-  const handleCreate = (e: React.FormEvent) => {
+  const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (playlists.length >= maxPlaylists) return alert(`Limit reached! Upgrade your tier to create more than ${maxPlaylists} playlists.`);
-    const newPl: Playlist = { id: 'pl_' + Date.now(), name, ownerId: currentUser.id, trackIds: [] };
-    const updated = [...playlists, newPl];
-    setPlaylists(updated);
-    const all = getDB<Playlist[]>('db_playlists', []);
-    setDB('db_playlists', [...all, newPl]);
-    setName('');
+    
+    try {
+      await playlistsAPI.createPlaylist(name);
+      const res = await playlistsAPI.getPlaylists();
+      const pls = (res as any).results || (Array.isArray(res) ? res : []);
+      setPlaylists(pls);
+      setDB('db_playlists', pls);
+      setName('');
+      setBackendOffline(false);
+    } catch {
+      alert('Backend offline. Cannot create playlist.');
+    }
   };
 
-  const handleRename = (plId: string, oldName: string) => {
+  const handleRename = async (plId: string, oldName: string) => {
     const newName = prompt('Enter new name for playlist:', oldName);
     if (!newName || !newName.trim() || newName === oldName) return;
     
-    const all = getDB<Playlist[]>('db_playlists', []);
-    const updated = all.map(pl => pl.id === plId ? { ...pl, name: newName.trim() } : pl);
-    setDB('db_playlists', updated);
-    setPlaylists(updated.filter(p => p.ownerId === currentUser.id));
+    try {
+      await playlistsAPI.updatePlaylist(plId, { name: newName.trim() } as any);
+      const res = await playlistsAPI.getPlaylists();
+      const pls = (res as any).results || (Array.isArray(res) ? res : []);
+      setPlaylists(pls);
+      setDB('db_playlists', pls);
+      setBackendOffline(false);
+    } catch {
+      alert('Backend offline. Cannot rename playlist.');
+    }
   };
 
-  const handleDelete = (plId: string) => {
+  const handleDelete = async (plId: string) => {
     if (!confirm('Are you sure you want to delete this playlist?')) return;
-    const all = getDB<Playlist[]>('db_playlists', []);
-    const updated = all.filter(pl => pl.id !== plId);
-    setDB('db_playlists', updated);
-    setPlaylists(updated.filter(p => p.ownerId === currentUser.id));
+    try {
+      await playlistsAPI.deletePlaylist(plId);
+      const res = await playlistsAPI.getPlaylists();
+      const pls = (res as any).results || (Array.isArray(res) ? res : []);
+      setPlaylists(pls);
+      setDB('db_playlists', pls);
+      setBackendOffline(false);
+    } catch {
+      alert('Backend offline. Cannot delete playlist.');
+    }
   };
 
-  const removeTrackFromPlaylist = (plId: string, trackId: string) => {
-    const all = getDB<Playlist[]>('db_playlists', []);
-    const updated = all.map(pl => pl.id === plId ? { ...pl, trackIds: pl.trackIds.filter(id => id !== trackId) } : pl);
-    setDB('db_playlists', updated);
-    setPlaylists(updated.filter(p => p.ownerId === currentUser.id));
+  const removeTrackFromPlaylist = async (plId: string, trackId: string) => {
+    try {
+      await playlistsAPI.removeTrack(plId, trackId);
+      const res = await playlistsAPI.getPlaylists();
+      const pls = (res as any).results || (Array.isArray(res) ? res : []);
+      setPlaylists(pls);
+      setDB('db_playlists', pls);
+      setBackendOffline(false);
+    } catch {
+      alert('Backend offline. Cannot remove track from playlist.');
+    }
   };
 
   const handlePlayFromPlaylist = (track: Track, list: Track[], pl: Playlist) => {
@@ -75,6 +118,7 @@ export default function PlaylistsPage() {
 
   return (
     <div className="space-y-6">
+      <BackendOfflineBanner show={backendOffline} />
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-neutral-900 border border-neutral-800 p-6 rounded-xl gap-4 shadow-xl">
         <div>
           <h2 className="text-lg font-bold text-white">{t.playlistsTitle} ({playlists.length} / {maxPlaylists === 9999 ? 'Unlimited' : maxPlaylists})</h2>

@@ -1,46 +1,80 @@
 'use client';
 import React, { useState, useEffect } from 'react';
+import { notificationsAPI } from '@/lib/api';
 import { getDB, setDB } from '@/lib/mockData';
 import { AppNotification } from '@/lib/types';
 import { useAuth } from '@/context/AuthContext';
-import { useLanguage } from '@/context/LanguageContext'; // Imported
+import { useLanguage } from '@/context/LanguageContext';
+import { BackendOfflineBanner } from '@/components/ui/BackendOfflineBanner';
 import Link from 'next/link';
 
 export default function NotificationsPage() {
   const { currentUser } = useAuth();
-  const { t } = useLanguage(); // Grabbed translations
+  const { t } = useLanguage();
   const [notifs, setNotifs] = useState<AppNotification[]>([]);
+  const [backendOffline, setBackendOffline] = useState(false);
 
   useEffect(() => {
-    if (currentUser) {
-      const all = getDB<AppNotification[]>('db_notifications', []);
-      setNotifs(all.filter(n => n.userId === currentUser.id || n.userId === 'all' || (n.userId === 'admin_support' && (currentUser.role === 'ADMIN' || currentUser.role === 'SUPPORT'))));
-    }
+    if (!currentUser) return;
+    
+    const load = async () => {
+      try {
+        const res = await notificationsAPI.getNotifications();
+        const results = (res as any).results || (Array.isArray(res) ? res : []);
+        setNotifs(results);
+        setDB('db_notifications', results);
+        setBackendOffline(false);
+      } catch {
+        const all = getDB<AppNotification[]>('db_notifications', []);
+        setNotifs(all.filter(n => n.userId === currentUser.id || n.userId === 'all' || (n.userId === 'admin_support' && (currentUser.role === 'ADMIN' || currentUser.role === 'SUPPORT'))));
+        setBackendOffline(true);
+      }
+    };
+    load();
   }, [currentUser]);
 
-  const markAllRead = () => {
-    const all = getDB<AppNotification[]>('db_notifications', []);
-    const updated = all.map(n => ({ ...n, isRead: true }));
-    setDB('db_notifications', updated);
-    setNotifs(notifs.map(n => ({ ...n, isRead: true })));
+  const markAllRead = async () => {
+    try {
+      await notificationsAPI.markAllRead();
+      const res = await notificationsAPI.getNotifications();
+      const results = (res as any).results || (Array.isArray(res) ? res : []);
+      setNotifs(results);
+      setDB('db_notifications', results);
+      setBackendOffline(false);
+    } catch {
+      alert('Backend offline. Cannot mark notifications as read.');
+    }
   };
 
-  const markSingleRead = (id: string) => {
-    const all = getDB<AppNotification[]>('db_notifications', []);
-    const updated = all.map(n => n.id === id ? { ...n, isRead: true } : n);
-    setDB('db_notifications', updated);
-    setNotifs(notifs.map(n => n.id === id ? { ...n, isRead: true } : n));
+  const markSingleRead = async (id: string) => {
+    try {
+      await notificationsAPI.markAsRead(id);
+      const res = await notificationsAPI.getNotifications();
+      const results = (res as any).results || (Array.isArray(res) ? res : []);
+      setNotifs(results);
+      setDB('db_notifications', results);
+      setBackendOffline(false);
+    } catch {
+      alert('Backend offline. Cannot mark notification as read.');
+    }
   };
 
-  const deleteNotif = (id: string) => {
-    const all = getDB<AppNotification[]>('db_notifications', []);
-    const updated = all.filter(n => n.id !== id);
-    setDB('db_notifications', updated);
-    setNotifs(notifs.filter(n => n.id !== id));
+  const deleteNotif = async (id: string) => {
+    try {
+      // Backend does not have deleteNotification endpoint currently, so simulate it 
+      // or implement it if it exists. Based on lib/api.ts it is missing, we will fallback
+      const all = getDB<AppNotification[]>('db_notifications', []);
+      const updated = all.filter(n => n.id !== id);
+      setDB('db_notifications', updated);
+      setNotifs(notifs.filter(n => n.id !== id));
+    } catch {
+      alert('Error deleting notification.');
+    }
   };
 
   return (
     <div className="max-w-2xl mx-auto space-y-4">
+      <BackendOfflineBanner show={backendOffline} />
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-xl font-bold text-white">{t.sysNotificationsTitle}</h2>
         <button onClick={markAllRead} className="text-xs text-green-400 font-bold hover:underline">{t.markAllRead}</button>

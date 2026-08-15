@@ -17,12 +17,18 @@ export default function RegisterPage() {
   const [policyAccepted, setPolicyAccepted] = useState(false);
   const [showPolicyModal, setShowPolicyModal] = useState(false);
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
   
   const { register } = useAuth();
   const router = useRouter();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError('');
+    if (password.length < 8) {
+      setError('Password must be at least 8 characters long.');
+      return;
+    }
     if (password !== confirmPassword) {
       setError('Passwords do not match. Please re-type your password.');
       return;
@@ -31,8 +37,20 @@ export default function RegisterPage() {
       setError('You must accept the Privacy Policy to proceed.');
       return;
     }
-    await register(name, email, tab as Role, birthDate, gender, tab === 'ARTIST' ? portfolio : undefined, password);
-    router.push('/');
+    setLoading(true);
+    try {
+      await register(name, email, tab as Role, birthDate, gender, tab === 'ARTIST' ? portfolio : undefined, password);
+      router.push('/');
+    } catch (err: any) {
+      const msg = err?.message || 'Registration failed';
+      if (msg.includes('fetch') || msg.includes('Failed to fetch') || msg.includes('NetworkError')) {
+        setError('⚠️ Backend server is not running. Start Django with: uv run python manage.py runserver');
+      } else {
+        setError(msg);
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -90,7 +108,7 @@ export default function RegisterPage() {
           <span className="text-xs text-neutral-400">I agree to the <button type="button" onClick={() => setShowPolicyModal(true)} className="text-white underline">Privacy Policy</button></span>
         </div>
 
-        <button type="submit" className="w-full py-2.5 bg-green-500 hover:bg-green-400 text-black font-bold rounded text-sm transition mt-2">Create Account</button>
+        <button type="submit" disabled={loading} className="w-full py-2.5 bg-green-500 hover:bg-green-400 text-black font-bold rounded text-sm transition mt-2 disabled:opacity-50">{loading ? 'Creating Account...' : 'Create Account'}</button>
       </form>
 
       <div className="mt-4 text-center text-xs text-neutral-400">

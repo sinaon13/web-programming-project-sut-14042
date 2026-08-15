@@ -1,12 +1,14 @@
 'use client';
 import React, { useState, useEffect } from 'react';
-import { getDB } from '@/lib/mockData';
+import { musicAPI } from '@/lib/api';
+import { getDB, setDB } from '@/lib/mockData';
 import { Album, Track } from '@/lib/types';
 import { usePlayer } from '@/context/PlayerContext';
 import { useAuth } from '@/context/AuthContext';
 import { useLanguage } from '@/context/LanguageContext';
 import { DownloadButton } from '@/components/ui/DownloadButton';
 import { PlaylistMenu } from '@/components/ui/PlaylistMenu';
+import { BackendOfflineBanner } from '@/components/ui/BackendOfflineBanner';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 
@@ -17,21 +19,42 @@ export default function AlbumDetailPage() {
   const { t } = useLanguage();
   const [album, setAlbum] = useState<Album | null>(null);
   const [tracks, setTracks] = useState<Track[]>([]);
+  const [backendOffline, setBackendOffline] = useState(false);
 
   useEffect(() => {
-    const allAlbums = getDB<Album[]>('db_albums', []);
-    const foundAlb = allAlbums.find(a => a.id === id);
-    if (foundAlb) {
-      setAlbum(foundAlb);
-      const allTracks = getDB<Track[]>('db_tracks', []);
-      setTracks(allTracks.filter(tItem => tItem.albumId === id || (tItem.album && tItem.album.toLowerCase() === foundAlb.title.toLowerCase())));
-    }
+    if (!id) return;
+    
+    const load = async () => {
+      try {
+        const alb = await musicAPI.getAlbum(id as string);
+        setAlbum(alb);
+        const res = await musicAPI.getTracks({ album: id as string });
+        const trks = (res as any).results || (Array.isArray(res) ? res : []);
+        setTracks(trks);
+        setBackendOffline(false);
+        
+        // Update local cache
+        const allAlbums = getDB<Album[]>('db_albums', []);
+        if (!allAlbums.find(a => a.id === alb.id)) setDB('db_albums', [...allAlbums, alb]);
+      } catch {
+        const allAlbums = getDB<Album[]>('db_albums', []);
+        const foundAlb = allAlbums.find(a => a.id === id);
+        if (foundAlb) {
+          setAlbum(foundAlb);
+          const allTracks = getDB<Track[]>('db_tracks', []);
+          setTracks(allTracks.filter(tItem => tItem.albumId === id || (tItem.album && tItem.album.toLowerCase() === foundAlb.title.toLowerCase())));
+        }
+        setBackendOffline(true);
+      }
+    };
+    load();
   }, [id]);
 
   if (!album) return <div className="text-center py-16 text-neutral-400">Album not found.</div>;
 
   return (
     <div className="space-y-8 max-w-4xl mx-auto">
+      <BackendOfflineBanner show={backendOffline} />
       <div className="p-8 bg-gradient-to-b from-neutral-800 to-neutral-900 border border-neutral-800 rounded-2xl flex flex-col sm:flex-row items-center gap-6 shadow-xl">
         <img src={album.coverUrl} className="w-48 h-48 rounded-xl object-cover shadow-2xl border border-neutral-700 flex-shrink-0" />
         <div className="text-center sm:text-left space-y-2">

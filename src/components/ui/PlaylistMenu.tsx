@@ -1,6 +1,7 @@
 'use client';
 import React, { useState, useEffect } from 'react';
 import { Playlist } from '@/lib/types';
+import { playlistsAPI } from '@/lib/api';
 import { getDB, setDB } from '@/lib/mockData';
 import { useAuth } from '@/context/AuthContext';
 import Link from 'next/link';
@@ -12,24 +13,44 @@ export const PlaylistMenu: React.FC<{ trackId: string }> = ({ trackId }) => {
 
   useEffect(() => {
     if (isOpen && currentUser) {
-      const all = getDB<Playlist[]>('db_playlists', []);
-      // STRICTLY filter by current user to prevent cross-user leakage!
-      setMyPlaylists(all.filter(p => p.ownerId === currentUser.id));
+      const fetchPlaylists = async () => {
+        try {
+          const res = await playlistsAPI.getPlaylists();
+          const list = (res as any).results || (Array.isArray(res) ? res : []);
+          setMyPlaylists(list);
+        } catch {
+          const all = getDB<Playlist[]>('db_playlists', []);
+          setMyPlaylists(all.filter(p => p.ownerId === currentUser.id));
+        }
+      };
+      fetchPlaylists();
     }
   }, [isOpen, currentUser]);
 
   if (!currentUser) return null;
 
-  const toggleTrackInPlaylist = (plId: string) => {
-    const all = getDB<Playlist[]>('db_playlists', []);
-    const updated = all.map(pl => {
-      if (pl.id !== plId) return pl;
-      const exists = pl.trackIds.includes(trackId);
-      const newTrackIds = exists ? pl.trackIds.filter(id => id !== trackId) : [...pl.trackIds, trackId];
-      return { ...pl, trackIds: newTrackIds };
-    });
-    setDB('db_playlists', updated);
-    setMyPlaylists(updated.filter(p => p.ownerId === currentUser.id));
+  const toggleTrackInPlaylist = async (plId: string) => {
+    const pl = myPlaylists.find(p => p.id === plId);
+    if (!pl) return;
+    const exists = pl.trackIds.includes(trackId);
+    try {
+      if (exists) {
+        await playlistsAPI.removeTrack(plId, trackId);
+      } else {
+        await playlistsAPI.addTrack(plId, trackId);
+      }
+      const res = await playlistsAPI.getPlaylists();
+      setMyPlaylists((res as any).results || (Array.isArray(res) ? res : []));
+    } catch {
+      const all = getDB<Playlist[]>('db_playlists', []);
+      const updated = all.map(p => {
+        if (p.id !== plId) return p;
+        const newTrackIds = exists ? p.trackIds.filter(id => id !== trackId) : [...p.trackIds, trackId];
+        return { ...p, trackIds: newTrackIds };
+      });
+      setDB('db_playlists', updated);
+      setMyPlaylists(updated.filter(p => p.ownerId === currentUser.id));
+    }
   };
 
   return (

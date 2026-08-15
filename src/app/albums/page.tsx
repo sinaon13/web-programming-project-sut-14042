@@ -1,20 +1,36 @@
 'use client';
 import React, { useState, useEffect } from 'react';
-import { getDB } from '@/lib/mockData';
+import { musicAPI } from '@/lib/api';
+import { getDB, setDB } from '@/lib/mockData';
 import { Album } from '@/lib/types';
-import { useLanguage } from '@/context/LanguageContext'; // Imported
+import { useLanguage } from '@/context/LanguageContext';
+import { BackendOfflineBanner } from '@/components/ui/BackendOfflineBanner';
 import Link from 'next/link';
 
 export default function AlbumsArchivePage() {
   const [albums, setAlbums] = useState<Album[]>([]);
-  const { t } = useLanguage(); // Grabbed translations
+  const [backendOffline, setBackendOffline] = useState(false);
+  const { t } = useLanguage();
 
   useEffect(() => {
-    setAlbums(getDB<Album[]>('db_albums', []));
+    const load = async () => {
+      try {
+        const res = await musicAPI.getAlbums();
+        const albs = (res as any).results || (Array.isArray(res) ? res : []);
+        setAlbums(albs);
+        setDB('db_albums', albs);
+        setBackendOffline(false);
+      } catch {
+        setAlbums(getDB<Album[]>('db_albums', []));
+        setBackendOffline(true);
+      }
+    };
+    load();
   }, []);
 
   return (
     <div className="space-y-6">
+      <BackendOfflineBanner show={backendOffline} />
       <div>
         <h1 className="text-2xl font-bold text-white mb-1">{t.albumsArchiveTitle}</h1>
         <p className="text-xs text-neutral-400">{t.albumsArchiveDesc}</p>

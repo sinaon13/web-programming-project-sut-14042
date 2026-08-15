@@ -3,10 +3,12 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { usePlayer } from '@/context/PlayerContext';
 import { useLanguage } from '@/context/LanguageContext';
-import { getDB } from '@/lib/mockData';
+import { musicAPI, playlistsAPI } from '@/lib/api';
+import { getDB, setDB } from '@/lib/mockData';
 import { Track, Album, Playlist } from '@/lib/types';
 import { DownloadButton } from '@/components/ui/DownloadButton';
 import { PlaylistMenu } from '@/components/ui/PlaylistMenu';
+import { BackendOfflineBanner } from '@/components/ui/BackendOfflineBanner';
 import Link from 'next/link';
 
 export default function HomePage() {
@@ -16,21 +18,53 @@ export default function HomePage() {
   const [tracks, setTracks] = useState<Track[]>([]);
   const [albums, setAlbums] = useState<Album[]>([]);
   const [recentPlaylists, setRecentPlaylists] = useState<Playlist[]>([]);
+  const [backendOffline, setBackendOffline] = useState(false);
 
   useEffect(() => {
-    if (currentUser) {
-      setTracks(getDB<Track[]>('db_tracks', []));
-      setAlbums(getDB<Album[]>('db_albums', []));
-      
-      const allPl = getDB<Playlist[]>('db_playlists', []);
-      const myPlaylists = allPl.filter(p => p.ownerId === currentUser.id);
-      
-      const userRecentKey = `db_recent_playlists_${currentUser.id}`;
-      const recentIds = getDB<string[]>(userRecentKey, []);
-      const foundRecent = recentIds.map(id => myPlaylists.find(p => p.id === id)).filter(Boolean) as Playlist[];
-      
-      setRecentPlaylists(foundRecent.length > 0 ? foundRecent : myPlaylists.slice(0, 4));
-    }
+    if (!currentUser) return;
+
+    const loadData = async () => {
+      let offline = false;
+
+      // Tracks
+      try {
+        const res = await musicAPI.getTracks();
+        const trks = (res as any).results || (Array.isArray(res) ? res : []);
+        setTracks(trks);
+        setDB('db_tracks', trks);
+      } catch {
+        setTracks(getDB<Track[]>('db_tracks', []));
+        offline = true;
+      }
+
+      // Albums
+      try {
+        const res = await musicAPI.getAlbums();
+        const albs = (res as any).results || (Array.isArray(res) ? res : []);
+        setAlbums(albs);
+        setDB('db_albums', albs);
+      } catch {
+        setAlbums(getDB<Album[]>('db_albums', []));
+        offline = true;
+      }
+
+      // Playlists
+      try {
+        const res = await playlistsAPI.getPlaylists();
+        const pls = (res as any).results || (Array.isArray(res) ? res : []);
+        setRecentPlaylists(pls.slice(0, 4));
+        setDB('db_playlists', pls);
+      } catch {
+        const allPl = getDB<Playlist[]>('db_playlists', []);
+        const myPlaylists = allPl.filter(p => p.ownerId === currentUser.id);
+        setRecentPlaylists(myPlaylists.slice(0, 4));
+        offline = true;
+      }
+
+      setBackendOffline(offline);
+    };
+
+    loadData();
   }, [currentUser]);
 
   if (!currentUser) return <div className="text-center py-12"><Link href="/login" className="text-green-400 font-bold underline">Log in to continue</Link></div>;
@@ -47,6 +81,7 @@ export default function HomePage() {
 
   return (
     <div className="space-y-8">
+      <BackendOfflineBanner show={backendOffline} />
       <div>
         <h1 className="text-2xl font-bold text-white mb-1">{t.welcomeBack}, {currentUser.name}</h1>
         <p className="text-xs text-neutral-400">{t.discoverText}</p>

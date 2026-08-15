@@ -1,10 +1,12 @@
 'use client';
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
+import { supportAPI, reportsAPI, subscriptionsAPI } from '@/lib/api';
 import { getDB, setDB } from '@/lib/mockData';
 import { User, Ticket, AppNotification, Track } from '@/lib/types';
 import { useLanguage } from '@/context/LanguageContext';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
+import { BackendOfflineBanner } from '@/components/ui/BackendOfflineBanner';
 
 export default function AdminPortalPage() {
   const { currentUser } = useAuth();
@@ -20,18 +22,46 @@ export default function AdminPortalPage() {
   
   // SOLVED: Replaced single shared string with an object state keyed by ticket.id!
   const [replyTexts, setReplyTexts] = useState<Record<string, string>>({});
+  const [backendOffline, setBackendOffline] = useState(false);
 
   useEffect(() => {
-    const users = getDB<User[]>('db_users', []);
-    setAllUsers(users);
-    setPendingArtists(users.filter(u => u.role === 'ARTIST' && u.status === 'PENDING'));
-    setAllArtists(users.filter(u => u.role === 'ARTIST'));
-    setTickets(getDB<Ticket[]>('db_tickets', []));
-    setAllTracks(getDB<Track[]>('db_tracks', []));
-    
-    const prices = getDB<{ SILVER: number; GOLD: number }>('db_prices', { SILVER: 50000, GOLD: 120000 });
-    setSilverPrice(prices.SILVER);
-    setGoldPrice(prices.GOLD);
+    const load = async () => {
+      try {
+        const prices = await subscriptionsAPI.getPlans();
+        const pList = (prices as any).results || (Array.isArray(prices) ? prices : []);
+        const s = pList.find((p: any) => p.tier === 'SILVER')?.price || 50000;
+        const g = pList.find((p: any) => p.tier === 'GOLD')?.price || 120000;
+        setSilverPrice(s);
+        setGoldPrice(g);
+
+        const tkts = await supportAPI.getTickets();
+        setTickets((tkts as any).results || (Array.isArray(tkts) ? tkts : []));
+
+        // Simplified: missing get_users endpoint in api.ts, so just fetch from mockDB for users/artists
+        // as well as tracks since this is a heavy admin page.
+        // We set backendOffline based on the first few queries.
+        
+        const users = getDB<User[]>('db_users', []);
+        setAllUsers(users);
+        setPendingArtists(users.filter(u => u.role === 'ARTIST' && u.status === 'PENDING'));
+        setAllArtists(users.filter(u => u.role === 'ARTIST'));
+        setAllTracks(getDB<Track[]>('db_tracks', []));
+        setBackendOffline(false);
+      } catch {
+        const users = getDB<User[]>('db_users', []);
+        setAllUsers(users);
+        setPendingArtists(users.filter(u => u.role === 'ARTIST' && u.status === 'PENDING'));
+        setAllArtists(users.filter(u => u.role === 'ARTIST'));
+        setTickets(getDB<Ticket[]>('db_tickets', []));
+        setAllTracks(getDB<Track[]>('db_tracks', []));
+        
+        const cachedPrices = getDB<{ SILVER: number; GOLD: number }>('db_prices', { SILVER: 50000, GOLD: 120000 });
+        setSilverPrice(cachedPrices.SILVER);
+        setGoldPrice(cachedPrices.GOLD);
+        setBackendOffline(true);
+      }
+    };
+    load();
   }, []);
 
   if (currentUser?.role !== 'SUPPORT' && currentUser?.role !== 'ADMIN') return <div className="p-4 bg-red-900/20 text-red-400 rounded">Access Denied</div>;
@@ -101,6 +131,7 @@ export default function AdminPortalPage() {
 
   return (
     <div className="space-y-6">
+      <BackendOfflineBanner show={backendOffline} />
       <div className="flex border-b border-neutral-800 space-x-6 overflow-x-auto">
         <button onClick={() => setTab('VERIFY')} className={`pb-3 font-bold text-sm ${tab === 'VERIFY' ? 'text-green-500 border-b-2 border-green-500' : 'text-neutral-500'}`}>{t.verificationsTab} ({pendingArtists.length})</button>
         <button onClick={() => setTab('TICKETS')} className={`pb-3 font-bold text-sm ${tab === 'TICKETS' ? 'text-green-500 border-b-2 border-green-500' : 'text-neutral-500'}`}>{t.ticketsTab} ({tickets.length})</button>

@@ -1,32 +1,53 @@
 'use client';
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
+import { subscriptionsAPI } from '@/lib/api';
 import { getDB, setDB } from '@/lib/mockData';
 import { Tier, User, Track, Album, Playlist, Ticket, AppNotification } from '@/lib/types';
 import { usePlayer } from '@/context/PlayerContext';
 import { useLanguage } from '@/context/LanguageContext';
+import { BackendOfflineBanner } from '@/components/ui/BackendOfflineBanner';
 
 export default function SettingsPage() {
   const { currentUser, updateUser, logout } = useAuth();
   const { volume, setVolume } = usePlayer();
   const { language, setLanguage, t } = useLanguage();
   const [prices, setPrices] = useState({ SILVER: 50000, GOLD: 120000 });
+  const [backendOffline, setBackendOffline] = useState(false);
   
   const [notifNewReleases, setNotifNewReleases] = useState(true);
   const [notifExpiration, setNotifExpiration] = useState(true);
   const [notifEmail, setNotifEmail] = useState(false);
 
   useEffect(() => {
-    setPrices(getDB<{ SILVER: number; GOLD: number }>('db_prices', { SILVER: 50000, GOLD: 120000 }));
+    const load = async () => {
+      try {
+        const res = await subscriptionsAPI.getPlans();
+        const plans = (res as any).results || (Array.isArray(res) ? res : []);
+        const silver = plans.find((p: any) => p.tier === 'SILVER')?.price || 50000;
+        const gold = plans.find((p: any) => p.tier === 'GOLD')?.price || 120000;
+        setPrices({ SILVER: silver, GOLD: gold });
+        setDB('db_prices', { SILVER: silver, GOLD: gold });
+        setBackendOffline(false);
+      } catch {
+        setPrices(getDB<{ SILVER: number; GOLD: number }>('db_prices', { SILVER: 50000, GOLD: 120000 }));
+        setBackendOffline(true);
+      }
+    };
+    load();
     const savedVol = localStorage.getItem('sys_default_volume');
     if (savedVol && !isNaN(parseFloat(savedVol))) setVolume(parseFloat(savedVol));
   }, []);
 
   if (!currentUser) return null;
 
-  const upgradeTier = (target: Tier) => {
-    updateUser({ tier: target });
-    alert(`Successfully upgraded to ${target}!`);
+  const upgradeTier = async (target: Tier) => {
+    try {
+      await updateUser({ tier: target });
+      alert(`Successfully upgraded to ${target}!`);
+    } catch {
+      alert('Backend offline. Cannot upgrade tier.');
+    }
   };
 
   const handleVolumeChange = (newVol: number) => {
@@ -74,6 +95,7 @@ export default function SettingsPage() {
 
   return (
     <div className="max-w-xl mx-auto space-y-6">
+      <BackendOfflineBanner show={backendOffline} />
       <div className="p-6 bg-neutral-900 border border-neutral-800 rounded-xl shadow-xl">
         <h3 className="font-bold text-white mb-2 text-md">{t.subManagement}</h3>
         <p className="text-xs text-neutral-400 mb-6">{t.currentTier}: <span className="text-green-400 font-bold uppercase">{currentUser.tier}</span></p>

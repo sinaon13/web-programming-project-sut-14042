@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
 import { usePathname } from 'next/navigation';
 import { useLanguage } from '@/context/LanguageContext';
+import { notificationsAPI } from '@/lib/api';
 import { getDB } from '@/lib/mockData';
 import { AppNotification } from '@/lib/types';
 
@@ -16,16 +17,24 @@ export const Navigation: React.FC = () => {
   // Check for unread notifications on mount and whenever route changes
   useEffect(() => {
     if (!currentUser) return;
-    const all = getDB<AppNotification[]>('db_notifications', []);
-    const unread = all.some(n => 
-      !n.isRead && 
-      (
-        n.userId === currentUser.id || 
-        n.userId === 'all' || 
-        (n.userId === 'admin_support' && (currentUser.role === 'ADMIN' || currentUser.role === 'SUPPORT'))
-      )
-    );
-    setHasUnreadNotifs(unread);
+    const fetchUnread = async () => {
+      try {
+        const res = await notificationsAPI.getUnreadCount();
+        setHasUnreadNotifs(res.unread_count > 0);
+      } catch {
+        const all = getDB<AppNotification[]>('db_notifications', []);
+        const unread = all.some(n => 
+          !n.isRead && 
+          (
+            n.userId === currentUser.id || 
+            n.userId === 'all' || 
+            (n.userId === 'admin_support' && (currentUser.role === 'ADMIN' || currentUser.role === 'SUPPORT'))
+          )
+        );
+        setHasUnreadNotifs(unread);
+      }
+    };
+    fetchUnread();
   }, [currentUser, pathname]);
 
   if (!currentUser) return null;
