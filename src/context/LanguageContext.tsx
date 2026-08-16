@@ -348,6 +348,33 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         })
         .catch(() => {});
     }
+
+    const handleLogout = () => {
+      setLanguageState('en');
+      localStorage.removeItem('app_lang');
+      document.documentElement.dir = 'ltr';
+      document.documentElement.lang = 'en';
+    };
+
+    const handleLogin = () => {
+      authAPI.getPreferences()
+        .then(prefs => {
+          if (prefs.language && (prefs.language === 'en' || prefs.language === 'fa')) {
+            setLanguageState(prefs.language);
+            localStorage.setItem('app_lang', prefs.language);
+            document.documentElement.dir = prefs.language === 'fa' ? 'rtl' : 'ltr';
+            document.documentElement.lang = prefs.language;
+          }
+        })
+        .catch(() => {});
+    };
+
+    window.addEventListener('auth_logout', handleLogout);
+    window.addEventListener('auth_login', handleLogin);
+    return () => {
+      window.removeEventListener('auth_logout', handleLogout);
+      window.removeEventListener('auth_login', handleLogin);
+    };
   }, []);
 
   const setLanguage = (lang: Language) => {

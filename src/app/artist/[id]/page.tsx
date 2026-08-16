@@ -1,8 +1,8 @@
 'use client';
 import React, { useState, useEffect } from 'react';
 import { musicAPI, authAPI } from '@/lib/api';
-import { getDB, setDB } from '@/lib/mockData';
 import { User, Track, Album } from '@/lib/types';
+import { adaptPublicUser, adaptTrack, adaptAlbum } from '@/lib/adapters';
 import { useAuth } from '@/context/AuthContext';
 import { usePlayer } from '@/context/PlayerContext';
 import { useLanguage } from '@/context/LanguageContext';
@@ -28,27 +28,18 @@ export default function ArtistProfilePage() {
     const load = async () => {
       try {
         const u = await authAPI.getPublicUser(id as string);
-        setArtist(u as any);
+        setArtist(adaptPublicUser(u));
         
         const trRes = await musicAPI.getTracks({ artist: id as string });
         const trks = (trRes as any).results || (Array.isArray(trRes) ? trRes : []);
-        setArtistTracks(trks);
+        setArtistTracks(trks.map(adaptTrack));
         
         const alRes = await musicAPI.getAlbums({ artist: id as string });
         const albs = (alRes as any).results || (Array.isArray(alRes) ? alRes : []);
-        setArtistAlbums(albs);
+        setArtistAlbums(albs.map(adaptAlbum));
         
         setBackendOffline(false);
       } catch {
-        const users = getDB<User[]>('db_users', []);
-        const found = users.find(u => u.id === id && u.role === 'ARTIST');
-        if (found) {
-          setArtist(found);
-          const tracks = getDB<Track[]>('db_tracks', []);
-          setArtistTracks(tracks.filter(tItem => tItem.artistId === id));
-          const albums = getDB<Album[]>('db_albums', []);
-          setArtistAlbums(albums.filter(a => a.artistId === id));
-        }
         setBackendOffline(true);
       }
     };

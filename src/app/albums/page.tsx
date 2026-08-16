@@ -1,8 +1,8 @@
 'use client';
 import React, { useState, useEffect } from 'react';
 import { musicAPI } from '@/lib/api';
-import { getDB, setDB } from '@/lib/mockData';
 import { Album } from '@/lib/types';
+import { adaptAlbum } from '@/lib/adapters';
 import { useLanguage } from '@/context/LanguageContext';
 import { BackendOfflineBanner } from '@/components/ui/BackendOfflineBanner';
 import Link from 'next/link';
@@ -17,11 +17,9 @@ export default function AlbumsArchivePage() {
       try {
         const res = await musicAPI.getAlbums();
         const albs = (res as any).results || (Array.isArray(res) ? res : []);
-        setAlbums(albs);
-        setDB('db_albums', albs);
+        setAlbums(albs.map(adaptAlbum));
         setBackendOffline(false);
       } catch {
-        setAlbums(getDB<Album[]>('db_albums', []));
         setBackendOffline(true);
       }
     };

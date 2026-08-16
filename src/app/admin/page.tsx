@@ -2,8 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { supportAPI, reportsAPI, subscriptionsAPI } from '@/lib/api';
-import { getDB, setDB } from '@/lib/mockData';
-import { User, Ticket, AppNotification, Track } from '@/lib/types';
+import { User, Ticket } from '@/lib/types';
 import { useLanguage } from '@/context/LanguageContext';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
 import { BackendOfflineBanner } from '@/components/ui/BackendOfflineBanner';
@@ -12,122 +11,144 @@ export default function AdminPortalPage() {
   const { currentUser } = useAuth();
   const { t } = useLanguage();
   const [tab, setTab] = useState<'VERIFY' | 'TICKETS' | 'ACCOUNTING' | 'PRICING'>('VERIFY');
+  
   const [pendingArtists, setPendingArtists] = useState<User[]>([]);
   const [tickets, setTickets] = useState<Ticket[]>([]);
-  const [allArtists, setAllArtists] = useState<User[]>([]);
-  const [allTracks, setAllTracks] = useState<Track[]>([]);
-  const [allUsers, setAllUsers] = useState<User[]>([]);
+  const [payouts, setPayouts] = useState<any[]>([]);
+  const [dashboardStats, setDashboardStats] = useState<any>(null);
+  const [plans, setPlans] = useState<any[]>([]);
+  
   const [silverPrice, setSilverPrice] = useState(50000);
   const [goldPrice, setGoldPrice] = useState(120000);
   
-  // SOLVED: Replaced single shared string with an object state keyed by ticket.id!
   const [replyTexts, setReplyTexts] = useState<Record<string, string>>({});
   const [backendOffline, setBackendOffline] = useState(false);
 
-  useEffect(() => {
-    const load = async () => {
-      try {
-        const prices = await subscriptionsAPI.getPlans();
-        const pList = (prices as any).results || (Array.isArray(prices) ? prices : []);
-        const s = pList.find((p: any) => p.tier === 'SILVER')?.price || 50000;
-        const g = pList.find((p: any) => p.tier === 'GOLD')?.price || 120000;
-        setSilverPrice(s);
-        setGoldPrice(g);
+  const loadData = async () => {
+    try {
+      // 1. Fetch Subscription Plans
+      const pricesResp = await subscriptionsAPI.getPlans();
+      const pList = (pricesResp as any).results || (Array.isArray(pricesResp) ? pricesResp : []);
+      setPlans(pList);
+      const s = pList.find((p: any) => p.tier === 'SILVER')?.price || 50000;
+      const g = pList.find((p: any) => p.tier === 'GOLD')?.price || 120000;
+      setSilverPrice(s);
+      setGoldPrice(g);
 
-        const tkts = await supportAPI.getTickets();
-        setTickets((tkts as any).results || (Array.isArray(tkts) ? tkts : []));
+      // 2. Fetch Tickets
+      const tktsResp = await supportAPI.getTickets();
+      setTickets((tktsResp as any).results || (Array.isArray(tktsResp) ? tktsResp : []));
 
-        // Simplified: missing get_users endpoint in api.ts, so just fetch from mockDB for users/artists
-        // as well as tracks since this is a heavy admin page.
-        // We set backendOffline based on the first few queries.
-        
-        const users = getDB<User[]>('db_users', []);
-        setAllUsers(users);
-        setPendingArtists(users.filter(u => u.role === 'ARTIST' && u.status === 'PENDING'));
-        setAllArtists(users.filter(u => u.role === 'ARTIST'));
-        setAllTracks(getDB<Track[]>('db_tracks', []));
-        setBackendOffline(false);
-      } catch {
-        const users = getDB<User[]>('db_users', []);
-        setAllUsers(users);
-        setPendingArtists(users.filter(u => u.role === 'ARTIST' && u.status === 'PENDING'));
-        setAllArtists(users.filter(u => u.role === 'ARTIST'));
-        setTickets(getDB<Ticket[]>('db_tickets', []));
-        setAllTracks(getDB<Track[]>('db_tracks', []));
-        
-        const cachedPrices = getDB<{ SILVER: number; GOLD: number }>('db_prices', { SILVER: 50000, GOLD: 120000 });
-        setSilverPrice(cachedPrices.SILVER);
-        setGoldPrice(cachedPrices.GOLD);
-        setBackendOffline(true);
+      // 3. Fetch Pending Artists
+      const artistsResp = await supportAPI.getPendingArtists();
+      setPendingArtists((artistsResp as any).results || (Array.isArray(artistsResp) ? artistsResp : []));
+
+      // 4. Fetch Dashboard Stats (for Pricing)
+      if (currentUser?.role === 'ADMIN') {
+        const stats = await reportsAPI.getAdminDashboard();
+        setDashboardStats(stats);
+
+        // 5. Fetch Payouts (for Accounting)
+        const payoutResp = await reportsAPI.getAdminPayouts();
+        setPayouts(payoutResp?.payouts || []);
       }
-    };
-    load();
-  }, []);
+      
+      setBackendOffline(false);
+    } catch (e) {
+      console.error(e);
+      setBackendOffline(true);
+    }
+  };
+
+  useEffect(() => {
+    loadData();
+  }, [currentUser]);
 
   if (currentUser?.role !== 'SUPPORT' && currentUser?.role !== 'ADMIN') return <div className="p-4 bg-red-900/20 text-red-400 rounded">Access Denied</div>;
 
-  const handleArtistAction = (id: string, status: 'APPROVED' | 'REJECTED') => {
-    let reason = '';
-    if (status === 'REJECTED') {
-      reason = prompt('Enter mandatory reason for artist rejection:') || 'Does not meet platform quality standards.';
+  const handleArtistAction = async (id: string | number, status: 'APPROVED' | 'REJECTED') => {
+    try {
+      if (status === 'APPROVED') {
+        await supportAPI.approveArtist(id);
+      } else {
+        const reason = prompt('Enter mandatory reason for artist rejection:') || 'Does not meet platform quality standards.';
+        await supportAPI.rejectArtist(id, reason);
+      }
+      setPendingArtists(pendingArtists.filter(u => u.id !== id));
+      alert(`Artist successfully ${status.toLowerCase()}! Automated notification sent.`);
+    } catch {
+      alert('Action failed. Is the backend offline?');
     }
-    
-    const users = getDB<User[]>('db_users', []).map(u => u.id === id ? { ...u, status, rejectionReason: reason || undefined } : u);
-    setDB('db_users', users);
-    setAllUsers(users);
-    setPendingArtists(users.filter(u => u.role === 'ARTIST' && u.status === 'PENDING'));
-    setAllArtists(users.filter(u => u.role === 'ARTIST'));
-
-    const notifs = getDB<AppNotification[]>('db_notifications', []);
-    const newNotif: AppNotification = {
-      id: 'n_' + Date.now(),
-      userId: id,
-      title: status === 'APPROVED' ? '🎉 Artist Application Approved!' : '⛔ Artist Application Rejected',
-      message: status === 'APPROVED' ? 'You can now publish music in your Artist Studio.' : `Reason: ${reason}`,
-      isRead: false,
-      timestamp: 'Just now',
-      targetUrl: '/artist-portal'
-    };
-    setDB('db_notifications', [newNotif, ...notifs]);
-    alert(`Artist successfully ${status.toLowerCase()}! Automated notification sent.`);
   };
 
-  const handleReplyTicket = (ticketId: string) => {
+  const handleReplyTicket = async (ticketId: string | number) => {
     const text = replyTexts[ticketId];
     if (!text || !text.trim()) return;
-    const updated = tickets.map(tItem => tItem.id === ticketId ? {
-      ...tItem, status: 'ANSWERED' as const, messages: [...tItem.messages, { sender: currentUser.name, text: text.trim(), time: 'Just now' }]
-    } : tItem);
-    setTickets(updated);
-    setDB('db_tickets', updated);
-    setReplyTexts({ ...replyTexts, [ticketId]: '' }); // Clears strictly this input!
+    try {
+      await supportAPI.addMessage(ticketId, text.trim());
+      await loadData();
+      setReplyTexts({ ...replyTexts, [ticketId]: '' });
+    } catch {
+      alert('Failed to send reply.');
+    }
   };
 
-  const handleCloseTicket = (ticketId: string) => {
-    if (!confirm('Mark this support ticket as formally CLOSED?')) return;
-    const updated = tickets.map(tItem => tItem.id === ticketId ? { ...tItem, status: 'CLOSED' as const } : tItem);
-    setTickets(updated);
-    setDB('db_tickets', updated);
+  const handleSettleArtist = async (artistId: string | number) => {
+    try {
+      await reportsAPI.settlePayouts([artistId]);
+      alert('Artist payout marked as SETTLED! Notification sent.');
+      // Refresh payouts
+      const payoutResp = await reportsAPI.getAdminPayouts();
+      setPayouts(payoutResp?.payouts || []);
+    } catch {
+      alert('Failed to settle payout.');
+    }
   };
 
-  const handleSettleArtist = (artistId: string) => {
-    const users = getDB<User[]>('db_users', []).map(u => u.id === artistId ? { ...u, payoutStatus: 'SETTLED' as const } : u);
-    setDB('db_users', users);
-    setAllArtists(users.filter(u => u.role === 'ARTIST'));
-    alert('Artist payout marked as SETTLED!');
-  };
-
-  const handleUpdatePrices = (e: React.FormEvent) => {
+  const handleUpdatePrices = async (e: React.FormEvent) => {
     e.preventDefault();
-    setDB('db_prices', { SILVER: silverPrice, GOLD: goldPrice });
-    alert('System pricing adjusted successfully without code deployment!');
+    try {
+      const sPlan = plans.find(p => p.tier === 'SILVER');
+      const gPlan = plans.find(p => p.tier === 'GOLD');
+      if (sPlan) await subscriptionsAPI.updatePlanPrice(sPlan.id, silverPrice);
+      if (gPlan) await subscriptionsAPI.updatePlanPrice(gPlan.id, goldPrice);
+      alert('System pricing adjusted successfully without code deployment!');
+    } catch {
+      alert('Failed to update prices.');
+    }
   };
 
-  const tierData = [
-    { name: 'Basic (Free)', value: allUsers.filter(u => u.tier === 'BASIC').length, color: '#9ca3af' },
-    { name: 'Silver Plan', value: allUsers.filter(u => u.tier === 'SILVER').length, color: '#60a5fa' },
-    { name: 'Gold VIP', value: allUsers.filter(u => u.tier === 'GOLD').length, color: '#f59e0b' }
-  ];
+  const handleCloseTicket = async (ticketId: string | number) => {
+    if (!confirm('Mark this support ticket as formally CLOSED?')) return;
+    try {
+      await supportAPI.updateTicketStatus(ticketId, 'CLOSED');
+      await loadData();
+      alert('Ticket closed successfully.');
+    } catch {
+      alert('Failed to close ticket.');
+    }
+  };
+
+  let tierData: any[] = [];
+  let totalSubRevenue = 0;
+  let activeGold = 0;
+  let activeSilver = 0;
+
+  if (dashboardStats) {
+    const colorMap: Record<string, string> = {
+      'BASIC': '#9ca3af',
+      'SILVER': '#60a5fa',
+      'GOLD': '#f59e0b'
+    };
+    tierData = dashboardStats.tier_distribution.map((td: any) => ({
+      name: `${td.plan__tier} Plan`,
+      value: td.count,
+      color: colorMap[td.plan__tier] || '#ffffff'
+    }));
+    totalSubRevenue = parseFloat(dashboardStats.total_revenue || '0');
+    activeGold = dashboardStats.tier_distribution.find((td: any) => td.plan__tier === 'GOLD')?.count || 0;
+    activeSilver = dashboardStats.tier_distribution.find((td: any) => td.plan__tier === 'SILVER')?.count || 0;
+  }
 
   return (
     <div className="space-y-6">
@@ -135,7 +156,7 @@ export default function AdminPortalPage() {
       <div className="flex border-b border-neutral-800 space-x-6 overflow-x-auto">
         <button onClick={() => setTab('VERIFY')} className={`pb-3 font-bold text-sm ${tab === 'VERIFY' ? 'text-green-500 border-b-2 border-green-500' : 'text-neutral-500'}`}>{t.verificationsTab} ({pendingArtists.length})</button>
         <button onClick={() => setTab('TICKETS')} className={`pb-3 font-bold text-sm ${tab === 'TICKETS' ? 'text-green-500 border-b-2 border-green-500' : 'text-neutral-500'}`}>{t.ticketsTab} ({tickets.length})</button>
-        {currentUser.role === 'ADMIN' && (
+        {currentUser?.role === 'ADMIN' && (
           <>
             <button onClick={() => setTab('ACCOUNTING')} className={`pb-3 font-bold text-sm ${tab === 'ACCOUNTING' ? 'text-green-500 border-b-2 border-green-500' : 'text-neutral-500'}`}>{t.accountingTab}</button>
             <button onClick={() => setTab('PRICING')} className={`pb-3 font-bold text-sm ${tab === 'PRICING' ? 'text-amber-400 border-b-2 border-amber-400' : 'text-neutral-500'}`}>{t.pricingTab}</button>
@@ -145,12 +166,12 @@ export default function AdminPortalPage() {
 
       {tab === 'VERIFY' && (
         <div className="space-y-3">
-          {pendingArtists.length === 0 ? <p className="text-neutral-500 text-sm">No pending applications.</p> : pendingArtists.map(artist => (
+          {pendingArtists.length === 0 ? <p className="text-neutral-500 text-sm">No pending applications.</p> : pendingArtists.map((artist: any) => (
             <div key={artist.id} className="p-4 bg-neutral-900 border border-neutral-800 rounded-xl flex justify-between items-center shadow-md">
               <div>
-                <h4 className="font-bold text-white text-sm">{artist.name}</h4>
+                <h4 className="font-bold text-white text-sm">{artist.display_name || artist.username}</h4>
                 <p className="text-xs text-amber-400 font-mono my-0.5">Email: {artist.email}</p>
-                <a href={artist.portfolioUrl || '#'} target="_blank" className="text-xs text-blue-400 hover:underline">View Portfolio Sample</a>
+                {artist.portfolio_url && <a href={artist.portfolio_url} target="_blank" className="text-xs text-blue-400 hover:underline">View Portfolio Sample</a>}
               </div>
               <div className="space-x-2">
                 <button onClick={() => handleArtistAction(artist.id, 'APPROVED')} className="px-4 py-1.5 bg-green-500 text-black font-bold text-xs rounded hover:bg-green-400">{t.approveBtn}</button>
@@ -163,15 +184,15 @@ export default function AdminPortalPage() {
 
       {tab === 'TICKETS' && (
         <div className="space-y-4">
-          {tickets.map(tItem => (
+          {tickets.map((tItem: any) => (
             <div key={tItem.id} className="p-4 bg-neutral-900 border border-neutral-800 rounded-xl space-y-3 shadow-md">
               <div className="flex justify-between border-b border-neutral-800 pb-2">
                 <div>
-                  <span className="font-mono text-xs font-bold text-green-400 mr-2">{tItem.ticketNumber}</span>
-                  <span className="font-bold text-white text-sm">{tItem.subject} (By: {tItem.userName})</span>
+                  <span className="font-mono text-xs font-bold text-green-400 mr-2">#{tItem.id}</span>
+                  <span className="font-bold text-white text-sm">{tItem.subject}</span>
                 </div>
                 <div className="flex items-center gap-3">
-                  <span className="text-[11px] text-neutral-400">Sent: {tItem.createdAt}</span>
+                  <span className="text-[11px] text-neutral-400">Sent: {new Date(tItem.created_at).toLocaleDateString()}</span>
                   <span className={`text-[10px] px-2 py-0.5 rounded font-bold ${tItem.status === 'CLOSED' ? 'bg-red-500/20 text-red-400' : 'bg-green-500/20 text-green-400'}`}>{tItem.status}</span>
                   {tItem.status !== 'CLOSED' && (
                     <button onClick={() => handleCloseTicket(tItem.id)} className="text-[10px] bg-neutral-800 hover:bg-red-600/30 text-neutral-300 hover:text-red-300 px-2 py-0.5 rounded border border-neutral-700 transition">
@@ -181,9 +202,9 @@ export default function AdminPortalPage() {
                 </div>
               </div>
               <div className="space-y-2 max-h-40 overflow-y-auto">
-                {tItem.messages.map((m, idx) => (
+                {tItem.messages?.map((m: any, idx: number) => (
                   <div key={idx} className="text-xs bg-black/40 p-2 rounded">
-                    <span className="font-bold text-green-400">{m.sender}: </span><span className="text-neutral-300">{m.text}</span>
+                    <span className="font-bold text-green-400">{m.sender_name || 'User'}: </span><span className="text-neutral-300">{m.body}</span>
                   </div>
                 ))}
               </div>
@@ -206,7 +227,7 @@ export default function AdminPortalPage() {
         </div>
       )}
 
-      {tab === 'ACCOUNTING' && currentUser.role === 'ADMIN' && (
+      {tab === 'ACCOUNTING' && currentUser?.role === 'ADMIN' && (
         <div className="p-6 bg-neutral-900 border border-neutral-800 rounded-xl shadow-xl">
           <h3 className="text-lg font-bold text-white mb-4">Monthly Financial Accounting & Artist Payouts</h3>
           <div className="overflow-x-auto">
@@ -214,58 +235,42 @@ export default function AdminPortalPage() {
               <thead>
                 <tr className="border-b border-neutral-800 text-xs text-neutral-400">
                   <th className="pb-3">Artist Name & ID</th>
-                  <th className="pb-3">Unique Monthly Listeners</th>
                   <th className="pb-3">Total Registered Streams</th>
-                  <th className="pb-3">Calculated Payout (25 IRR/Stream)</th>
-                  <th className="pb-3">Payment Status</th>
+                  <th className="pb-3">Calculated Payout</th>
                   <th className="pb-3">Action (Admin Only)</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-neutral-800/60 text-sm">
-                {allArtists.map(art => {
-                  const artTracks = allTracks.filter(tItem => tItem.artistId === art.id);
-                  const totalStreams = artTracks.reduce((sum, tItem) => sum + (tItem.totalStreams || tItem.listenersCount * 2), 0);
-                  const uniqueListeners = Math.floor(totalStreams * 0.7);
-                  const payoutAmount = totalStreams * 25;
-                  return (
-                    <tr key={art.id} className="hover:bg-neutral-800/30">
-                      <td className="py-3 font-bold text-white">{art.name} <span className="text-[10px] text-neutral-500 block">({art.id})</span></td>
-                      <td className="py-3 text-neutral-300">{uniqueListeners.toLocaleString()}</td>
-                      <td className="py-3 text-neutral-300">{totalStreams.toLocaleString()}</td>
-                      <td className="py-3 font-mono text-amber-400 font-bold">{payoutAmount.toLocaleString()} Toman</td>
-                      <td className="py-3">
-                        <span className={`text-[11px] font-bold px-2.5 py-1 rounded-full ${art.payoutStatus === 'SETTLED' ? 'bg-green-500/20 text-green-400' : 'bg-amber-500/20 text-amber-400'}`}>
-                          {art.payoutStatus === 'SETTLED' ? t.settled : t.inPending}
-                        </span>
-                      </td>
-                      <td className="py-3">
-                        {art.payoutStatus !== 'SETTLED' && (
-                          <button onClick={() => handleSettleArtist(art.id)} className="px-3 py-1 bg-green-500 text-black font-bold text-xs rounded hover:bg-green-400">{t.confirmSettlement}</button>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
+                {payouts.map((art: any) => (
+                  <tr key={art.artist_id} className="hover:bg-neutral-800/30">
+                    <td className="py-3 font-bold text-white">{art.artist_name} <span className="text-[10px] text-neutral-500 block">({art.artist_email})</span></td>
+                    <td className="py-3 text-neutral-300">{art.stream_count.toLocaleString()}</td>
+                    <td className="py-3 font-mono text-amber-400 font-bold">{parseFloat(art.payout_amount).toLocaleString()} Rials</td>
+                    <td className="py-3">
+                      <button onClick={() => handleSettleArtist(art.artist_id)} className="px-3 py-1 bg-green-500 text-black font-bold text-xs rounded hover:bg-green-400">{t.confirmSettlement}</button>
+                    </td>
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>
         </div>
       )}
 
-      {tab === 'PRICING' && currentUser.role === 'ADMIN' && (
+      {tab === 'PRICING' && currentUser?.role === 'ADMIN' && dashboardStats && (
         <div className="space-y-8">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div className="p-5 bg-neutral-900 border border-neutral-800 rounded-xl text-center shadow-lg">
               <span className="text-xs text-neutral-400 uppercase font-semibold">Total Subscription Revenue</span>
-              <span className="block text-2xl font-extrabold text-green-400 mt-2">{(allUsers.filter(u => u.tier === 'GOLD').length * goldPrice + allUsers.filter(u => u.tier === 'SILVER').length * silverPrice).toLocaleString()} IRR</span>
+              <span className="block text-2xl font-extrabold text-green-400 mt-2">{totalSubRevenue.toLocaleString()} IRR</span>
             </div>
             <div className="p-5 bg-neutral-900 border border-neutral-800 rounded-xl text-center shadow-lg">
               <span className="text-xs text-neutral-400 uppercase font-semibold">Active Gold VIP Users</span>
-              <span className="block text-2xl font-extrabold text-amber-400 mt-2">{allUsers.filter(u => u.tier === 'GOLD').length} Subscribers</span>
+              <span className="block text-2xl font-extrabold text-amber-400 mt-2">{activeGold} Subscribers</span>
             </div>
             <div className="p-5 bg-neutral-900 border border-neutral-800 rounded-xl text-center shadow-lg">
               <span className="text-xs text-neutral-400 uppercase font-semibold">Active Silver Users</span>
-              <span className="block text-2xl font-extrabold text-blue-400 mt-2">{allUsers.filter(u => u.tier === 'SILVER').length} Subscribers</span>
+              <span className="block text-2xl font-extrabold text-blue-400 mt-2">{activeSilver} Subscribers</span>
             </div>
           </div>
 

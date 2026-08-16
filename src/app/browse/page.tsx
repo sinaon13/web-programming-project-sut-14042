@@ -1,8 +1,8 @@
 'use client';
 import React, { useState, useEffect } from 'react';
 import { musicAPI } from '@/lib/api';
-import { getDB, setDB } from '@/lib/mockData';
 import { Track } from '@/lib/types';
+import { adaptTrack } from '@/lib/adapters';
 import { usePlayer } from '@/context/PlayerContext';
 import { useAuth } from '@/context/AuthContext';
 import { useLanguage } from '@/context/LanguageContext';
@@ -28,11 +28,9 @@ export default function BrowsePage() {
       try {
         const res = await musicAPI.getTracks();
         const trks = (res as any).results || (Array.isArray(res) ? res : []);
-        setAllTracks(trks);
-        setDB('db_tracks', trks);
+        setAllTracks(trks.map(adaptTrack));
         setBackendOffline(false);
       } catch {
-        setAllTracks(getDB<Track[]>('db_tracks', []));
         setBackendOffline(true);
       }
     };

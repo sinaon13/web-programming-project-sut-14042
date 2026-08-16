@@ -182,6 +182,19 @@ export const authAPI = {
     });
   },
 
+  updateAvatar: async (file: File): Promise<User> => {
+    const formData = new FormData();
+    formData.append('avatar', file);
+    return apiCall<User>('/accounts/me/', {
+      method: 'PATCH',
+      body: formData,
+    });
+  },
+
+  deleteAccount: async () => {
+    return apiCall('/accounts/me/', { method: 'DELETE' });
+  },
+
   getPublicUser: async (id: string | number) => {
     return apiCall(`/accounts/users/${id}/`);
   },
@@ -202,6 +215,13 @@ export const authAPI = {
     return apiCall('/accounts/preferences/', {
       method: 'PATCH',
       body: JSON.stringify(data),
+    });
+  },
+
+  requestPasswordReset: async (email: string) => {
+    return apiCall('/accounts/password-reset/', {
+      method: 'POST',
+      body: JSON.stringify({ email }),
     });
   },
 };
@@ -225,6 +245,43 @@ export const musicAPI = {
       method: 'POST',
       body: formData,
     });
+  },
+
+  updateTrack: async (id: string | number, formData: FormData): Promise<Track> => {
+    return apiCall<Track>(`/music/tracks/${id}/`, {
+      method: 'PATCH',
+      body: formData,
+    });
+  },
+
+  deleteTrack: async (id: string | number): Promise<void> => {
+    return apiCall(`/music/tracks/${id}/`, { method: 'DELETE' });
+  },
+
+  downloadTrack: async (id: string | number) => {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') : null;
+    const url = `http://127.0.0.1:8000/api/music/tracks/${id}/download/`;
+    
+    // We fetch it explicitly so we can pass the auth header and handle the redirect/blob
+    const res = await fetch(url, {
+      headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+    });
+
+    if (!res.ok) {
+      if (res.status === 403) throw new Error('Downloading tracks is restricted to Silver and Gold subscribers.');
+      throw new Error('Download failed');
+    }
+
+    const blob = await res.blob();
+    const downloadUrl = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = downloadUrl;
+    // Extract filename from content-disposition or just use a default
+    a.download = `track-${id}.mp3`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    window.URL.revokeObjectURL(downloadUrl);
   },
 
   streamTrack: async (id: string | number) => {
@@ -332,6 +389,13 @@ export const supportAPI = {
       body: JSON.stringify({ reason }),
     });
   },
+
+  updateTicketStatus: async (ticketId: string | number, ticketStatus: string) => {
+    return apiCall(`/support/tickets/${ticketId}/`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status: ticketStatus }),
+    });
+  },
 };
 
 // ---------------------------------------------------------------------------
@@ -341,6 +405,13 @@ export const supportAPI = {
 export const subscriptionsAPI = {
   getPlans: async () => {
     return apiCall('/subscriptions/plans/');
+  },
+
+  updatePlanPrice: async (id: number, price: number) => {
+    return apiCall(`/subscriptions/plans/${id}/price/`, {
+      method: 'PATCH',
+      body: JSON.stringify({ price }),
+    });
   },
 
   getMySubscription: async () => {
@@ -388,6 +459,10 @@ export const notificationsAPI = {
 
   getUnreadCount: async () => {
     return apiCall<{ unread_count: number }>('/notifications/unread-count/');
+  },
+
+  deleteNotification: async (id: string | number) => {
+    return apiCall(`/notifications/${id}/`, { method: 'DELETE' });
   },
 };
 

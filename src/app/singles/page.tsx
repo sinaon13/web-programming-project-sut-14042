@@ -1,8 +1,8 @@
 'use client';
 import React, { useState, useEffect } from 'react';
 import { musicAPI } from '@/lib/api';
-import { getDB, setDB } from '@/lib/mockData';
 import { Track } from '@/lib/types';
+import { adaptTrack } from '@/lib/adapters';
 import { usePlayer } from '@/context/PlayerContext';
 import { useAuth } from '@/context/AuthContext';
 import { useLanguage } from '@/context/LanguageContext';
@@ -22,12 +22,10 @@ export default function SinglesArchivePage() {
       try {
         const res = await musicAPI.getTracks();
         const trks = (res as any).results || (Array.isArray(res) ? res : []);
-        setDB('db_tracks', trks);
-        setSingles(trks.filter((tItem: Track) => tItem.releaseType === 'SINGLE' || !tItem.albumId));
+        const adapted = trks.map(adaptTrack);
+        setSingles(adapted.filter((tItem: Track) => tItem.releaseType === 'SINGLE' || !tItem.albumId));
         setBackendOffline(false);
       } catch {
-        const all = getDB<Track[]>('db_tracks', []);
-        setSingles(all.filter(tItem => tItem.releaseType === 'SINGLE' || !tItem.albumId));
         setBackendOffline(true);
       }
     };

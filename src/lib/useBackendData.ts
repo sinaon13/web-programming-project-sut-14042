@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { getDB, setDB } from '@/lib/mockData';
+
 
 /**
  * Hook to fetch data from Django backend first, falling back to localStorage cache.
@@ -26,13 +26,10 @@ export function useBackendData<T>(
       const result = transform ? transform(raw) : raw;
       setData(result);
       setBackendOffline(false);
-      // Cache to localStorage for offline fallback
-      setDB(cacheKey, result);
+      // Cache to localStorage for offline fallback (removed)
     } catch {
-      // Backend unreachable — load from localStorage cache
+      // Backend unreachable — load from localStorage cache (removed)
       setBackendOffline(true);
-      const cached = getDB<T>(cacheKey, fallbackDefault);
-      setData(cached);
     } finally {
       setLoading(false);
     }

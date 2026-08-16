@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { Playlist } from '@/lib/types';
 import { playlistsAPI } from '@/lib/api';
-import { getDB, setDB } from '@/lib/mockData';
+import { adaptPlaylist } from '@/lib/adapters';
 import { useAuth } from '@/context/AuthContext';
 import Link from 'next/link';
 
@@ -17,10 +17,9 @@ export const PlaylistMenu: React.FC<{ trackId: string }> = ({ trackId }) => {
         try {
           const res = await playlistsAPI.getPlaylists();
           const list = (res as any).results || (Array.isArray(res) ? res : []);
-          setMyPlaylists(list);
+          setMyPlaylists(list.map(adaptPlaylist));
         } catch {
-          const all = getDB<Playlist[]>('db_playlists', []);
-          setMyPlaylists(all.filter(p => p.ownerId === currentUser.id));
+          // Backend offline or error, fail silently or handle error state
         }
       };
       fetchPlaylists();
@@ -40,16 +39,9 @@ export const PlaylistMenu: React.FC<{ trackId: string }> = ({ trackId }) => {
         await playlistsAPI.addTrack(plId, trackId);
       }
       const res = await playlistsAPI.getPlaylists();
-      setMyPlaylists((res as any).results || (Array.isArray(res) ? res : []));
+      setMyPlaylists(((res as any).results || (Array.isArray(res) ? res : [])).map(adaptPlaylist));
     } catch {
-      const all = getDB<Playlist[]>('db_playlists', []);
-      const updated = all.map(p => {
-        if (p.id !== plId) return p;
-        const newTrackIds = exists ? p.trackIds.filter(id => id !== trackId) : [...p.trackIds, trackId];
-        return { ...p, trackIds: newTrackIds };
-      });
-      setDB('db_playlists', updated);
-      setMyPlaylists(updated.filter(p => p.ownerId === currentUser.id));
+      alert('Failed to modify playlist. Is the backend offline?');
     }
   };
 

@@ -1,18 +1,30 @@
 'use client';
 import React, { useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
+import { authAPI } from '@/lib/api';
+import { useRef } from 'react';
 
 export default function ProfilePage() {
   const { currentUser, updateUser } = useAuth();
   const [isEditingName, setIsEditingName] = useState(false);
   const [newName, setNewName] = useState(currentUser?.name || '');
 
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   if (!currentUser) return null;
 
-  const handleAvatarChange = () => {
+  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (currentUser.tier === 'BASIC') return alert('Avatar upload is restricted on Free Basic tier. Please upgrade to Silver or Gold.');
-    const url = prompt('Enter new image URL:', currentUser.avatar);
-    if (url) updateUser({ avatar: url });
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const updatedUser = await authAPI.updateAvatar(file);
+      updateUser({ avatar: updatedUser.avatar });
+      alert('✅ Avatar updated successfully!');
+    } catch {
+      alert('Failed to update avatar. Is backend running?');
+    }
   };
 
   const handleSaveName = () => {
@@ -27,7 +39,8 @@ export default function ProfilePage() {
         <div className="flex items-center space-x-6">
           <div className="relative">
             <img src={currentUser.avatar} className="w-24 h-24 rounded-full object-cover border-2 border-green-500 shadow-md" />
-            <button onClick={handleAvatarChange} className="absolute bottom-0 right-0 bg-neutral-800 border border-neutral-600 text-[10px] px-2 py-0.5 rounded-full hover:bg-neutral-700">Edit</button>
+            <input type="file" accept="image/*" ref={fileInputRef} onChange={handleAvatarChange} className="hidden" />
+            <button onClick={() => fileInputRef.current?.click()} className="absolute bottom-0 right-0 bg-neutral-800 border border-neutral-600 text-[10px] px-2 py-0.5 rounded-full hover:bg-neutral-700">Edit</button>
           </div>
           <div>
             {isEditingName ? (

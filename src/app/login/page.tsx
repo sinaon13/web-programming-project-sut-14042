@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { authAPI } from '@/lib/api';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -10,6 +11,9 @@ export default function LoginPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [showForgot, setShowForgot] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState('');
+  const [forgotMsg, setForgotMsg] = useState('');
+  const [forgotLoading, setForgotLoading] = useState(false);
   const { login } = useAuth();
   const router = useRouter();
 
@@ -63,8 +67,34 @@ export default function LoginPage() {
           <div className="bg-neutral-900 border border-neutral-800 p-6 rounded-xl max-w-sm w-full text-center shadow-2xl">
             <h3 className="font-bold text-white mb-2">Reset Password</h3>
             <p className="text-xs text-neutral-400 mb-4">Enter your email to receive recovery instructions.</p>
-            <input type="email" placeholder="email@domain.com" className="w-full p-2 mb-4 bg-neutral-800 border border-neutral-700 rounded text-sm text-white font-mono" />
-            <button onClick={() => { alert('Recovery email sent!'); setShowForgot(false); }} className="w-full py-2 bg-green-500 text-black font-bold rounded text-xs mb-2">Send Recovery Link</button>
+            
+            {forgotMsg && <div className="p-2 mb-3 bg-green-900/40 border border-green-500 text-green-400 text-xs rounded">{forgotMsg}</div>}
+            
+            <input 
+              type="email" 
+              value={forgotEmail}
+              onChange={e => setForgotEmail(e.target.value)}
+              placeholder="email@domain.com" 
+              className="w-full p-2 mb-4 bg-neutral-800 border border-neutral-700 rounded text-sm text-white font-mono" 
+            />
+            <button 
+              disabled={forgotLoading || !forgotEmail}
+              onClick={async () => { 
+                setForgotLoading(true);
+                try {
+                  await authAPI.requestPasswordReset(forgotEmail);
+                  setForgotMsg('Recovery email sent!');
+                  setTimeout(() => setShowForgot(false), 2000);
+                } catch {
+                  alert('Failed to send recovery email. Is backend online?');
+                } finally {
+                  setForgotLoading(false);
+                }
+              }} 
+              className="w-full py-2 bg-green-500 text-black font-bold rounded text-xs mb-2 disabled:opacity-50"
+            >
+              {forgotLoading ? 'Sending...' : 'Send Recovery Link'}
+            </button>
             <button onClick={() => setShowForgot(false)} className="text-xs text-neutral-400 hover:text-white">Cancel</button>
           </div>
         </div>

@@ -1,8 +1,8 @@
 'use client';
 import React, { useState, useEffect } from 'react';
 import { notificationsAPI } from '@/lib/api';
-import { getDB, setDB } from '@/lib/mockData';
 import { AppNotification } from '@/lib/types';
+import { adaptNotification } from '@/lib/adapters';
 import { useAuth } from '@/context/AuthContext';
 import { useLanguage } from '@/context/LanguageContext';
 import { BackendOfflineBanner } from '@/components/ui/BackendOfflineBanner';
@@ -21,12 +21,9 @@ export default function NotificationsPage() {
       try {
         const res = await notificationsAPI.getNotifications();
         const results = (res as any).results || (Array.isArray(res) ? res : []);
-        setNotifs(results);
-        setDB('db_notifications', results);
+        setNotifs(results.map(adaptNotification));
         setBackendOffline(false);
       } catch {
-        const all = getDB<AppNotification[]>('db_notifications', []);
-        setNotifs(all.filter(n => n.userId === currentUser.id || n.userId === 'all' || (n.userId === 'admin_support' && (currentUser.role === 'ADMIN' || currentUser.role === 'SUPPORT'))));
         setBackendOffline(true);
       }
     };
@@ -38,8 +35,7 @@ export default function NotificationsPage() {
       await notificationsAPI.markAllRead();
       const res = await notificationsAPI.getNotifications();
       const results = (res as any).results || (Array.isArray(res) ? res : []);
-      setNotifs(results);
-      setDB('db_notifications', results);
+      setNotifs(results.map(adaptNotification));
       setBackendOffline(false);
     } catch {
       alert('Backend offline. Cannot mark notifications as read.');
@@ -51,8 +47,7 @@ export default function NotificationsPage() {
       await notificationsAPI.markAsRead(id);
       const res = await notificationsAPI.getNotifications();
       const results = (res as any).results || (Array.isArray(res) ? res : []);
-      setNotifs(results);
-      setDB('db_notifications', results);
+      setNotifs(results.map(adaptNotification));
       setBackendOffline(false);
     } catch {
       alert('Backend offline. Cannot mark notification as read.');
@@ -61,11 +56,7 @@ export default function NotificationsPage() {
 
   const deleteNotif = async (id: string) => {
     try {
-      // Backend does not have deleteNotification endpoint currently, so simulate it 
-      // or implement it if it exists. Based on lib/api.ts it is missing, we will fallback
-      const all = getDB<AppNotification[]>('db_notifications', []);
-      const updated = all.filter(n => n.id !== id);
-      setDB('db_notifications', updated);
+      await notificationsAPI.deleteNotification(id);
       setNotifs(notifs.filter(n => n.id !== id));
     } catch {
       alert('Error deleting notification.');

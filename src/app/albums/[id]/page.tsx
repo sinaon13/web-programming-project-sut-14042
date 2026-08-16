@@ -1,8 +1,8 @@
 'use client';
 import React, { useState, useEffect } from 'react';
 import { musicAPI } from '@/lib/api';
-import { getDB, setDB } from '@/lib/mockData';
 import { Album, Track } from '@/lib/types';
+import { adaptAlbum, adaptTrack } from '@/lib/adapters';
 import { usePlayer } from '@/context/PlayerContext';
 import { useAuth } from '@/context/AuthContext';
 import { useLanguage } from '@/context/LanguageContext';
@@ -27,23 +27,12 @@ export default function AlbumDetailPage() {
     const load = async () => {
       try {
         const alb = await musicAPI.getAlbum(id as string);
-        setAlbum(alb);
+        setAlbum(adaptAlbum(alb));
         const res = await musicAPI.getTracks({ album: id as string });
         const trks = (res as any).results || (Array.isArray(res) ? res : []);
-        setTracks(trks);
+        setTracks(trks.map(adaptTrack));
         setBackendOffline(false);
-        
-        // Update local cache
-        const allAlbums = getDB<Album[]>('db_albums', []);
-        if (!allAlbums.find(a => a.id === alb.id)) setDB('db_albums', [...allAlbums, alb]);
       } catch {
-        const allAlbums = getDB<Album[]>('db_albums', []);
-        const foundAlb = allAlbums.find(a => a.id === id);
-        if (foundAlb) {
-          setAlbum(foundAlb);
-          const allTracks = getDB<Track[]>('db_tracks', []);
-          setTracks(allTracks.filter(tItem => tItem.albumId === id || (tItem.album && tItem.album.toLowerCase() === foundAlb.title.toLowerCase())));
-        }
         setBackendOffline(true);
       }
     };

@@ -4,8 +4,8 @@ import { useAuth } from '@/context/AuthContext';
 import { usePlayer } from '@/context/PlayerContext';
 import { useLanguage } from '@/context/LanguageContext';
 import { musicAPI, playlistsAPI } from '@/lib/api';
-import { getDB, setDB } from '@/lib/mockData';
 import { Track, Album, Playlist } from '@/lib/types';
+import { adaptTrack, adaptAlbum, adaptPlaylist } from '@/lib/adapters';
 import { DownloadButton } from '@/components/ui/DownloadButton';
 import { PlaylistMenu } from '@/components/ui/PlaylistMenu';
 import { BackendOfflineBanner } from '@/components/ui/BackendOfflineBanner';
@@ -30,10 +30,8 @@ export default function HomePage() {
       try {
         const res = await musicAPI.getTracks();
         const trks = (res as any).results || (Array.isArray(res) ? res : []);
-        setTracks(trks);
-        setDB('db_tracks', trks);
+        setTracks(trks.map(adaptTrack));
       } catch {
-        setTracks(getDB<Track[]>('db_tracks', []));
         offline = true;
       }
 
@@ -41,10 +39,8 @@ export default function HomePage() {
       try {
         const res = await musicAPI.getAlbums();
         const albs = (res as any).results || (Array.isArray(res) ? res : []);
-        setAlbums(albs);
-        setDB('db_albums', albs);
+        setAlbums(albs.map(adaptAlbum));
       } catch {
-        setAlbums(getDB<Album[]>('db_albums', []));
         offline = true;
       }
 
@@ -52,12 +48,8 @@ export default function HomePage() {
       try {
         const res = await playlistsAPI.getPlaylists();
         const pls = (res as any).results || (Array.isArray(res) ? res : []);
-        setRecentPlaylists(pls.slice(0, 4));
-        setDB('db_playlists', pls);
+        setRecentPlaylists(pls.map(adaptPlaylist).slice(0, 4));
       } catch {
-        const allPl = getDB<Playlist[]>('db_playlists', []);
-        const myPlaylists = allPl.filter(p => p.ownerId === currentUser.id);
-        setRecentPlaylists(myPlaylists.slice(0, 4));
         offline = true;
       }
 
@@ -74,8 +66,9 @@ export default function HomePage() {
 
   const handlePlaylistClick = (pl: Playlist) => {
     const userRecentKey = `db_recent_playlists_${currentUser.id}`;
-    const recent = getDB<string[]>(userRecentKey, []);
-    const updated = [pl.id, ...recent.filter(id => id !== pl.id)].slice(0, 6);
+    const recentStr = localStorage.getItem(userRecentKey);
+    const recent: string[] = recentStr ? JSON.parse(recentStr) : [];
+    const updated = [pl.id, ...recent.filter((id: string) => id !== pl.id)].slice(0, 6);
     localStorage.setItem(userRecentKey, JSON.stringify(updated));
   };
 

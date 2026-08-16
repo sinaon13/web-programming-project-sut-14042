@@ -2,8 +2,8 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { playlistsAPI, musicAPI } from '@/lib/api';
-import { getDB, setDB } from '@/lib/mockData';
 import { Playlist, Track } from '@/lib/types';
+import { adaptPlaylist, adaptTrack } from '@/lib/adapters';
 import { usePlayer } from '@/context/PlayerContext';
 import { useLanguage } from '@/context/LanguageContext';
 import { BackendOfflineBanner } from '@/components/ui/BackendOfflineBanner';
@@ -29,15 +29,10 @@ export default function PlaylistsPage() {
         const trRes = await musicAPI.getTracks();
         const pls = (plRes as any).results || (Array.isArray(plRes) ? plRes : []);
         const trks = (trRes as any).results || (Array.isArray(trRes) ? trRes : []);
-        setPlaylists(pls);
-        setAllTracks(trks);
-        setDB('db_playlists', pls);
-        setDB('db_tracks', trks);
+        setPlaylists(pls.map(adaptPlaylist));
+        setAllTracks(trks.map(adaptTrack));
         setBackendOffline(false);
       } catch {
-        const allPl = getDB<Playlist[]>('db_playlists', []);
-        setPlaylists(allPl.filter(p => p.ownerId === currentUser.id));
-        setAllTracks(getDB<Track[]>('db_tracks', []));
         setBackendOffline(true);
       }
     };
@@ -57,7 +52,6 @@ export default function PlaylistsPage() {
       const res = await playlistsAPI.getPlaylists();
       const pls = (res as any).results || (Array.isArray(res) ? res : []);
       setPlaylists(pls);
-      setDB('db_playlists', pls);
       setName('');
       setBackendOffline(false);
     } catch {
@@ -74,7 +68,6 @@ export default function PlaylistsPage() {
       const res = await playlistsAPI.getPlaylists();
       const pls = (res as any).results || (Array.isArray(res) ? res : []);
       setPlaylists(pls);
-      setDB('db_playlists', pls);
       setBackendOffline(false);
     } catch {
       alert('Backend offline. Cannot rename playlist.');
@@ -88,7 +81,6 @@ export default function PlaylistsPage() {
       const res = await playlistsAPI.getPlaylists();
       const pls = (res as any).results || (Array.isArray(res) ? res : []);
       setPlaylists(pls);
-      setDB('db_playlists', pls);
       setBackendOffline(false);
     } catch {
       alert('Backend offline. Cannot delete playlist.');
@@ -101,7 +93,6 @@ export default function PlaylistsPage() {
       const res = await playlistsAPI.getPlaylists();
       const pls = (res as any).results || (Array.isArray(res) ? res : []);
       setPlaylists(pls);
-      setDB('db_playlists', pls);
       setBackendOffline(false);
     } catch {
       alert('Backend offline. Cannot remove track from playlist.');
@@ -110,8 +101,9 @@ export default function PlaylistsPage() {
 
   const handlePlayFromPlaylist = (track: Track, list: Track[], pl: Playlist) => {
     const userRecentKey = `db_recent_playlists_${currentUser.id}`;
-    const recent = getDB<string[]>(userRecentKey, []);
-    const updated = [pl.id, ...recent.filter(id => id !== pl.id)].slice(0, 6);
+    const recentStr = localStorage.getItem(userRecentKey);
+    const recent: string[] = recentStr ? JSON.parse(recentStr) : [];
+    const updated = [pl.id, ...recent.filter((id: string) => id !== pl.id)].slice(0, 6);
     localStorage.setItem(userRecentKey, JSON.stringify(updated));
     playTrack(track, list);
   };

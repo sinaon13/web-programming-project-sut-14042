@@ -1,9 +1,9 @@
 'use client';
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
-import { musicAPI } from '@/lib/api';
-import { getDB, setDB } from '@/lib/mockData';
+import { musicAPI, authAPI } from '@/lib/api';
 import { Track, User, Album } from '@/lib/types';
+import { adaptTrack } from '@/lib/adapters';
 import { useLanguage } from '@/context/LanguageContext';
 import { BackendOfflineBanner } from '@/components/ui/BackendOfflineBanner';
 
@@ -12,14 +12,15 @@ export default function ArtistPortalPage() {
   const { t } = useLanguage();
   const [title, setTitle] = useState('');
   const [album, setAlbum] = useState('');
-  const [coverUrl, setCoverUrl] = useState('');
+  const [coverFile, setCoverFile] = useState<File | null>(null);
   const [lyrics, setLyrics] = useState('');
   const [genre, setGenre] = useState('Pop');
   const [releaseType, setReleaseType] = useState<'SINGLE' | 'ALBUM'>('SINGLE');
-  const [releaseYear, setReleaseYear] = useState(2026);
+  const [releaseYear, setReleaseYear] = useState<number>(2026);
   const [fileFormat, setFileFormat] = useState<'MP3' | 'WAV' | 'FLAC'>('MP3');
   const [collaborators, setCollaborators] = useState('');
   const [isEarlyAccess, setIsEarlyAccess] = useState(false);
+  const [audioFile, setAudioFile] = useState<File | null>(null);
   const [myTracks, setMyTracks] = useState<Track[]>([]);
   const [bio, setBio] = useState('');
   const [editingTrackId, setEditingTrackId] = useState<string | null>(null);
@@ -31,24 +32,24 @@ export default function ArtistPortalPage() {
     const load = async () => {
       try {
         const trRes = await musicAPI.getTracks();
-        const allTracks = (trRes as any).results || (Array.isArray(trRes) ? trRes : []);
+        const allTracks = ((trRes as any).results || (Array.isArray(trRes) ? trRes : [])).map(adaptTrack);
         setMyTracks(allTracks.filter((tItem: Track) => tItem.artistId === currentUser.id));
-        setDB('db_tracks', allTracks);
         setBackendOffline(false);
       } catch {
-        const allTracks = getDB<Track[]>('db_tracks', []);
-        setMyTracks(allTracks.filter(tItem => tItem.artistId === currentUser.id));
         setBackendOffline(true);
       }
     };
     load();
 
-    const allUsers = getDB<User[]>('db_users', []);
-    const freshUser = allUsers.find(u => u.id === currentUser.id);
-    if (freshUser && freshUser.status !== currentUser.status) {
-      updateUser({ status: freshUser.status, rejectionReason: freshUser.rejectionReason });
-    }
-    setBio(freshUser?.bio || currentUser.bio || '');
+    authAPI.getMe().then(freshUser => {
+      const freshStatus = (freshUser as any).artist_status || (freshUser as any).status;
+      const freshReason = (freshUser as any).rejection_reason || (freshUser as any).rejectionReason;
+      
+      if (freshUser && freshStatus !== currentUser.status) {
+        updateUser({ status: freshStatus, rejectionReason: freshReason });
+      }
+      setBio((freshUser as any).bio || currentUser.bio || '');
+    }).catch(console.error);
   }, [currentUser]);
 
   if (currentUser?.role !== 'ARTIST') return <div className="p-4 bg-red-900/20 text-red-400 rounded">Access Restricted to Verified Artists</div>;
@@ -68,111 +69,54 @@ export default function ArtistPortalPage() {
 
   if (currentUser.status === 'PENDING') return <div className="p-6 bg-amber-500/10 border border-amber-500 text-amber-300 rounded text-sm">Your artist application is currently under staff review. You will be notified once approved.</div>;
 
-  const handlePublishOrUpdate = (e: React.FormEvent) => {
+  const refreshMyTracks = async () => {
+    const trRes = await musicAPI.getTracks();
+    const allTracks = ((trRes as any).results || (Array.isArray(trRes) ? trRes : [])).map(adaptTrack);
+    setMyTracks(allTracks.filter((tItem: Track) => tItem.artistId === currentUser.id));
+  };
+
+  const handlePublishOrUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
-    let allTracks = getDB<Track[]>('db_tracks', []);
-    const defaultCover = 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=300';
-    let targetCoverUrl = coverUrl.trim() || defaultCover;
-    let targetAlbumId = '';
+    if (!title) return alert('Title is required');
+    if (!editingTrackId && !audioFile) return alert('Audio file is required for new tracks');
 
-    // ALBUM COVER LOCK ENGINE: Guarantee identical artwork across all album tracks!
-    if (releaseType === 'ALBUM') {
-      const allAlbums = getDB<Album[]>('db_albums', []);
-      const albumNameStr = album.trim() || 'Untitled Album';
-      let existingAlbum = allAlbums.find(a => a.title.toLowerCase() === albumNameStr.toLowerCase() && a.artistId === currentUser.id);
-      
-      if (!existingAlbum) {
-        // Album created for the first time! Lock in targetCoverUrl as official artwork.
-        existingAlbum = {
-          id: 'alb_' + Date.now(),
-          title: albumNameStr,
-          artistId: currentUser.id,
-          artistName: currentUser.name,
-          coverUrl: targetCoverUrl,
-          releaseDate: new Date().toISOString().split('T')[0],
-          genre
-        };
-        setDB('db_albums', [existingAlbum, ...allAlbums]);
+    try {
+      const formData = new FormData();
+      formData.append('title', title);
+      if (album) formData.append('album_title', album);
+      if (coverFile) formData.append('cover', coverFile);
+      formData.append('lyrics', lyrics);
+      formData.append('genre', genre);
+      formData.append('release_type', releaseType);
+      formData.append('release_date', `${releaseYear}-01-01`);
+      formData.append('release_year', releaseYear.toString());
+      formData.append('collaborators', collaborators);
+      formData.append('file_format', fileFormat);
+      formData.append('is_early_access', isEarlyAccess ? 'true' : 'false');
+      if (audioFile) formData.append('audio_file', audioFile);
+
+      if (editingTrackId) {
+        // PATCH existing track — no audio_file required for update
+        await musicAPI.updateTrack(editingTrackId, formData);
+        setEditingTrackId(null);
+        alert('✅ Track updated successfully!');
       } else {
-        // Album ALREADY EXISTS!
-        if (coverUrl.trim() && coverUrl.trim() !== existingAlbum.coverUrl) {
-          // If artist explicitly provided a NEW custom cover, update official Album AND cascade to every track!
-          targetCoverUrl = coverUrl.trim();
-          existingAlbum.coverUrl = targetCoverUrl;
-          setDB('db_albums', allAlbums.map(a => a.id === existingAlbum!.id ? existingAlbum! : a));
-        } else {
-          // Otherwise, LOCK the track's cover strictly to the established official album artwork!
-          targetCoverUrl = existingAlbum.coverUrl;
-        }
+        // POST new track — audio_file required
+        await musicAPI.uploadTrack(formData);
+        alert('✅ Track published to database!');
       }
-      targetAlbumId = existingAlbum.id;
 
-      // Force EVERY SINGLE TRACK belonging to this album to share targetCoverUrl
-      allTracks = allTracks.map(tItem => {
-        if (tItem.albumId === existingAlbum!.id || (tItem.album?.toLowerCase() === albumNameStr.toLowerCase() && tItem.artistId === currentUser.id)) {
-          return { ...tItem, coverUrl: targetCoverUrl, albumId: existingAlbum!.id, album: existingAlbum!.title };
-        }
-        return tItem;
-      });
-      setDB('db_tracks', allTracks);
+      await refreshMyTracks();
+      setTitle(''); setAlbum(''); setCoverFile(null); setLyrics(''); setCollaborators(''); setIsEarlyAccess(false); setAudioFile(null);
+    } catch (err: any) {
+      alert(`Failed to publish: ${err.message || 'Unknown error'}`);
     }
-
-    if (editingTrackId) {
-      const updated = allTracks.map(tItem => {
-        if (tItem.id !== editingTrackId) return tItem;
-        return {
-          ...tItem,
-          title,
-          album: releaseType === 'ALBUM' ? (album || 'Untitled Album') : 'Single Release',
-          albumId: targetAlbumId || undefined,
-          coverUrl: targetCoverUrl,
-          isEarlyAccess,
-          lyrics,
-          genre,
-          releaseType,
-          releaseYear,
-          collaborators,
-          fileFormat
-        };
-      });
-      setDB('db_tracks', updated);
-      setMyTracks(updated.filter(tItem => tItem.artistId === currentUser.id));
-      alert('✅ Track updated! Artwork is locked across the entire album.');
-      setEditingTrackId(null);
-    } else {
-      const newTrack: Track = {
-        id: 't_' + Date.now(),
-        title,
-        artistId: currentUser.id,
-        artistName: currentUser.name,
-        album: releaseType === 'ALBUM' ? (album || 'Untitled Album') : 'Single Release',
-        albumId: targetAlbumId || undefined,
-        coverUrl: targetCoverUrl,
-        audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3',
-        listenersCount: 1,
-        totalStreams: 1,
-        releaseDate: new Date().toISOString().split('T')[0],
-        isEarlyAccess,
-        lyrics,
-        genre,
-        releaseType,
-        releaseYear,
-        collaborators,
-        fileFormat
-      };
-      const updated = [newTrack, ...allTracks];
-      setDB('db_tracks', updated);
-      setMyTracks([newTrack, ...myTracks]);
-      alert('✅ Track published! Artwork is locked across the entire album.');
-    }
-
-    setTitle(''); setAlbum(''); setCoverUrl(''); setLyrics(''); setCollaborators(''); setIsEarlyAccess(false);
   };
 
   const handleStartEdit = (tItem: Track) => {
     setTitle(tItem.title);
     setAlbum(tItem.album || '');
-    setCoverUrl(tItem.coverUrl || '');
+    setCoverFile(null); // Clear previous file since we don't have the File object for it
     setLyrics(tItem.lyrics || '');
     setGenre(tItem.genre || 'Pop');
     setReleaseType(tItem.releaseType || 'SINGLE');
@@ -186,20 +130,29 @@ export default function ArtistPortalPage() {
 
   const cancelEdit = () => {
     setEditingTrackId(null);
-    setTitle(''); setAlbum(''); setCoverUrl(''); setLyrics(''); setCollaborators(''); setIsEarlyAccess(false);
+    setTitle(''); setAlbum(''); setCoverFile(null); setLyrics(''); setCollaborators(''); setIsEarlyAccess(false); setAudioFile(null);
   };
 
-  const handleDeleteTrack = (trackId: string) => {
+  const handleDeleteTrack = async (trackId: string) => {
     if (!confirm('Delete this track from the platform?')) return;
-    const allTracks = getDB<Track[]>('db_tracks', []).filter(tItem => tItem.id !== trackId);
-    setDB('db_tracks', allTracks);
-    setMyTracks(myTracks.filter(tItem => tItem.id !== trackId));
-    if (editingTrackId === trackId) cancelEdit();
+    try {
+      await musicAPI.deleteTrack(trackId);
+      alert('✅ Track deleted from the platform.');
+      if (editingTrackId === trackId) cancelEdit();
+      await refreshMyTracks();
+    } catch (err: any) {
+      alert(`Failed to delete: ${err.message || 'Unknown error'}`);
+    }
   };
 
-  const handleUpdateBio = () => {
-    updateUser({ bio });
-    alert('Biography updated successfully!');
+  const handleUpdateBio = async () => {
+    try {
+      await authAPI.updateMe({ bio });
+      updateUser({ bio });
+      alert('Biography updated successfully!');
+    } catch {
+      alert('Failed to update bio. Is the backend offline?');
+    }
   };
 
   return (
@@ -247,6 +200,12 @@ export default function ArtistPortalPage() {
             </div>
           </div>
 
+          <div>
+            <label className="block text-xs font-semibold text-neutral-400 mb-1">Audio File</label>
+            <input type="file" accept="audio/*" onChange={e => setAudioFile(e.target.files?.[0] || null)} className="w-full p-1.5 bg-neutral-800 border border-neutral-700 rounded text-sm text-white" />
+            {editingTrackId && <p className="text-[10px] text-neutral-500 mt-1">Leave empty to keep current audio file.</p>}
+          </div>
+
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <label className="block text-xs font-semibold text-neutral-400 mb-1">{t.genre}</label>
@@ -270,8 +229,9 @@ export default function ArtistPortalPage() {
               </div>
             )}
             <div className={releaseType === 'SINGLE' ? 'md:col-span-2' : ''}>
-              <label className="block text-xs font-semibold text-neutral-400 mb-1">{t.coverUrlLabel}</label>
-              <input type="url" placeholder={t.coverUrlPlaceholder} value={coverUrl} onChange={e => setCoverUrl(e.target.value)} className="w-full p-2 bg-neutral-800 border border-neutral-700 rounded text-sm text-white font-mono" />
+              <label className="block text-xs font-semibold text-neutral-400 mb-1">{t.coverUrlLabel} (Image File)</label>
+              <input type="file" accept="image/*" onChange={e => setCoverFile(e.target.files?.[0] || null)} className="w-full p-1.5 bg-neutral-800 border border-neutral-700 rounded text-sm text-white" />
+              {editingTrackId && <p className="text-[10px] text-neutral-500 mt-1">Leave empty to keep current cover image.</p>}
             </div>
           </div>
 

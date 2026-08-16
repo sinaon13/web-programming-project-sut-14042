@@ -5,7 +5,6 @@ import { useAuth } from '@/context/AuthContext';
 import { usePathname } from 'next/navigation';
 import { useLanguage } from '@/context/LanguageContext';
 import { notificationsAPI } from '@/lib/api';
-import { getDB } from '@/lib/mockData';
 import { AppNotification } from '@/lib/types';
 
 export const Navigation: React.FC = () => {
@@ -22,16 +21,7 @@ export const Navigation: React.FC = () => {
         const res = await notificationsAPI.getUnreadCount();
         setHasUnreadNotifs(res.unread_count > 0);
       } catch {
-        const all = getDB<AppNotification[]>('db_notifications', []);
-        const unread = all.some(n => 
-          !n.isRead && 
-          (
-            n.userId === currentUser.id || 
-            n.userId === 'all' || 
-            (n.userId === 'admin_support' && (currentUser.role === 'ADMIN' || currentUser.role === 'SUPPORT'))
-          )
-        );
-        setHasUnreadNotifs(unread);
+        // Failed to fetch, keep current state or handle error
       }
     };
     fetchUnread();

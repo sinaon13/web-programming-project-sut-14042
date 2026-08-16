@@ -121,7 +121,7 @@ export const PlayerBar: React.FC = () => {
       </div>
 
       {isFullScreen && (
-        <div className="fixed inset-0 z-50 flex flex-col justify-between p-6 md:p-12 overflow-y-auto animate-fadeIn" style={{ background: `linear-gradient(to bottom, ${accentColor}30, #171717, #000)` }}>
+        <div className="fixed inset-0 z-50 flex flex-col justify-between p-6 md:p-12 overflow-y-auto animate-fadeIn bg-neutral-950" style={{ background: accentColor ? `linear-gradient(to bottom, ${accentColor}30, #171717, #000)` : undefined }}>
           <div className="flex justify-between items-center w-full max-w-2xl mx-auto border-b border-neutral-800 pb-4">
             <span className="text-xs font-bold uppercase tracking-widest" style={{ color: accentColor }}>Now Playing in Full Screen</span>
             <button onClick={() => setIsFullScreen(false)} className="px-4 py-1.5 bg-neutral-800 hover:bg-neutral-700 text-white rounded-full font-bold text-xs border border-neutral-700 transition">

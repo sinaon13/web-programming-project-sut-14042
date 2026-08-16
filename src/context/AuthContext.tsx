@@ -32,6 +32,7 @@ function adaptDjangoUser(user: any): User {
     status: user.artist_status || user.status,
     portfolioUrl: user.portfolio_url || user.portfolioUrl,
     bio: user.bio,
+    rejectionReason: user.rejection_reason || user.rejectionReason,
   };
 }
 
@@ -64,6 +65,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const adapted = adaptDjangoUser(user);
       setCurrentUser(adapted);
       setBackendOnline(true);
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new Event('auth_login'));
+      }
       return true;
     } catch (err: any) {
       setBackendOnline(!err?.message?.includes('fetch'));
@@ -74,9 +78,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const logout = () => {
     setCurrentUser(null);
     clearTokens();
+    
+    // Clear user-specific language setting
     if (typeof window !== 'undefined') {
+      localStorage.removeItem('app_lang');
+      document.documentElement.dir = 'ltr';
+      document.documentElement.lang = 'en';
       window.dispatchEvent(new Event('auth_logout'));
     }
+    
     router.push('/login');
   };
 

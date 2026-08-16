@@ -2,8 +2,8 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { supportAPI } from '@/lib/api';
-import { getDB, setDB } from '@/lib/mockData';
 import { Ticket, AppNotification } from '@/lib/types';
+import { adaptTicket } from '@/lib/adapters';
 import { useLanguage } from '@/context/LanguageContext';
 import { BackendOfflineBanner } from '@/components/ui/BackendOfflineBanner';
 
@@ -22,12 +22,9 @@ export default function SupportTicketsPage() {
       try {
         const res = await supportAPI.getTickets();
         const results = (res as any).results || (Array.isArray(res) ? res : []);
-        setTickets(results);
-        setDB('db_tickets', results);
+        setTickets(results.map(adaptTicket));
         setBackendOffline(false);
       } catch {
-        const all = getDB<Ticket[]>('db_tickets', []);
-        setTickets(all.filter(tItem => tItem.userId === currentUser.id));
         setBackendOffline(true);
       }
     };
@@ -42,8 +39,7 @@ export default function SupportTicketsPage() {
       await supportAPI.createTicket(subject, message);
       const res = await supportAPI.getTickets();
       const results = (res as any).results || (Array.isArray(res) ? res : []);
-      setTickets(results);
-      setDB('db_tickets', results);
+      setTickets(results.map(adaptTicket));
       
       setSubject(''); setMessage('');
       setBackendOffline(false);
