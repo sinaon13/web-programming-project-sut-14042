@@ -1,0 +1,17 @@
+node_modules/
+.next/
+dist/
+build/
+.git/
+.env*
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+backend/
+Dockerfile
+docker-compose.yml
+AGENTS.md
+CLAUDE.md
+doc-*.png
+project_document.pdf
+.gemini/

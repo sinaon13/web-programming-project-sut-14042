@@ -1,16 +1,13 @@
-FROM python:3.12-slim
+FROM ghcr.io/astral-sh/uv:python3.12-bookworm-slim
 
 WORKDIR /app
 
-# Install system dependencies
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    curl \
-    build-essential \
-    && rm -rf /var/lib/apt/lists/*
+ENV HTTP_PROXY="http://host.docker.internal:6767"
+ENV HTTPS_PROXY="http://host.docker.internal:6767"
+ENV NO_PROXY="localhost,127.0.0.1"
 
-# Install uv
-RUN curl -LsSf https://astral.sh/uv/install.sh | sh
-ENV PATH="/root/.local/bin:${PATH}"
+# Use Aliyun PyPI mirror to bypass network restrictions and guarantee uptime
+ENV UV_INDEX_URL="https://mirrors.aliyun.com/pypi/simple/"
 
 COPY pyproject.toml uv.lock* ./
 RUN uv sync --frozen || uv sync

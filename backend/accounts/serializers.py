@@ -166,7 +166,7 @@ class PublicUserSerializer(serializers.ModelSerializer):
         model = User
         fields = [
             'id', 'username', 'display_name', 'role', 'avatar',
-            'bio', 'is_verified', 'followers_count', 'is_following', 'subscription_days_left',
+            'bio', 'is_verified', 'artist_status', 'followers_count', 'is_following', 'subscription_days_left',
             'total_streams', 'tracks_count'
         ]
 

@@ -3,7 +3,7 @@ name = "spotify-backend"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
-requires-python = ">=3.14"
+requires-python = ">=3.12"
 dependencies = [
     "django>=6.0.8",
     "django-cors-headers>=4.9.0",
@@ -12,4 +12,5 @@ dependencies = [
     "djangorestframework-simplejwt>=5.5.1",
     "drf-spectacular>=0.30.0",
     "pillow>=12.3.0",
+    "requests>=2.34.2",
 ]

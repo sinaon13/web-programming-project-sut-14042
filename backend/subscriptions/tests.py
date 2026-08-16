@@ -2,6 +2,7 @@ from django.test import TestCase
 from django.contrib.auth import get_user_model
 from rest_framework.test import APIClient
 from rest_framework import status as http_status
+from unittest.mock import patch, MagicMock
 
 from .models import SubscriptionPlan, UserSubscription, Transaction
 
@@ -43,7 +44,16 @@ class SubscriptionTests(TestCase):
         self.assertTrue(UserSubscription.objects.filter(user=self.user).exists())
 
     # ---- Test 3: Purchase premium returns payment URL ----
-    def test_purchase_premium_returns_payment_url(self):
+    @patch('subscriptions.views.requests.post')
+    def test_purchase_premium_returns_payment_url(self, mock_post):
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            'data': {'authority': 'SANDBOX-test123'},
+            'errors': []
+        }
+        mock_post.return_value = mock_response
+
         self.client.force_authenticate(user=self.user)
         response = self.client.post('/api/subscriptions/purchase/', {'plan_id': self.premium_plan.pk})
         self.assertEqual(response.status_code, http_status.HTTP_200_OK)
@@ -52,7 +62,16 @@ class SubscriptionTests(TestCase):
         self.assertEqual(Transaction.objects.count(), 1)
 
     # ---- Test 4: Verify payment success ----
-    def test_verify_payment_success(self):
+    @patch('subscriptions.views.requests.post')
+    def test_verify_payment_success(self, mock_post):
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            'data': {'code': 100},
+            'errors': []
+        }
+        mock_post.return_value = mock_response
+
         self.client.force_authenticate(user=self.user)
         # Create pending transaction
         tx = Transaction.objects.create(
