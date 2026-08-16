@@ -46,9 +46,23 @@ export default function HomePage() {
 
       // Playlists
       try {
-        const res = await playlistsAPI.getPlaylists();
+        const res = await playlistsAPI.getPlaylists('mine');
         const pls = ((res as any).results || (Array.isArray(res) ? res : [])).map(adaptPlaylist);
-        setRecentPlaylists(pls.filter((p: Playlist) => p.ownerId === String(currentUser.id)).slice(0, 4));
+        
+        const userRecentKey = `db_recent_playlists_${currentUser.id}`;
+        const recentStr = localStorage.getItem(userRecentKey);
+        const recentIds: string[] = recentStr ? JSON.parse(recentStr) : [];
+        
+        if (recentIds.length > 0) {
+          const sortedRecent = [];
+          for (const id of recentIds) {
+            const pl = pls.find((p: Playlist) => p.id === id);
+            if (pl) sortedRecent.push(pl);
+          }
+          setRecentPlaylists(sortedRecent.slice(0, 4));
+        } else {
+          setRecentPlaylists([]);
+        }
       } catch {
         offline = true;
       }

@@ -36,7 +36,13 @@ class PlaylistListCreateView(generics.ListCreateAPIView):
 
     def get_queryset(self):
         user = self.request.user
-        return Playlist.objects.filter(
+        qs = Playlist.objects.all()
+        
+        # Security: If explicitly requesting own playlists, filter securely.
+        if self.request.query_params.get('type') == 'mine':
+            return qs.filter(owner=user).select_related('owner')
+            
+        return qs.filter(
             Q(owner=user) | Q(is_public=True)
         ).select_related('owner').distinct()
 

@@ -3,9 +3,11 @@ import React, { useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { authAPI } from '@/lib/api';
 import { useRef } from 'react';
+import { useLanguage } from '@/context/LanguageContext';
 
 export default function ProfilePage() {
   const { currentUser, updateUser } = useAuth();
+  const { t } = useLanguage();
   const [isEditingName, setIsEditingName] = useState(false);
   const [newName, setNewName] = useState(currentUser?.name || '');
 
@@ -51,6 +53,11 @@ export default function ProfilePage() {
             ) : (
               <h2 className="text-xl font-bold text-white flex items-center gap-3">
                 <span>{currentUser.name}</span>
+                {currentUser.role === 'ARTIST' && currentUser.status === 'APPROVED' && (
+                  <span className="text-blue-400 text-xs font-bold bg-blue-500/20 border border-blue-500/40 px-3 py-1 rounded-full shadow flex items-center gap-1 flex-shrink-0" title="Verified Artist">
+                    {t.verifiedBadge}
+                  </span>
+                )}
                 <button onClick={() => { setNewName(currentUser.name); setIsEditingName(true); }} className="text-xs text-neutral-400 hover:text-white underline font-normal">Edit Name</button>
               </h2>
             )}

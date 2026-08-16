@@ -312,8 +312,9 @@ export const musicAPI = {
 // ---------------------------------------------------------------------------
 
 export const playlistsAPI = {
-  getPlaylists: async () => {
-    return apiCall<{ results: Playlist[] }>('/playlists/');
+  getPlaylists: async (type?: 'mine' | 'all') => {
+    const query = type ? `?type=${type}` : '';
+    return apiCall<{ results: Playlist[] }>(`/playlists/${query}`);
   },
 
   createPlaylist: async (title: string, description = '', is_public = true) => {
