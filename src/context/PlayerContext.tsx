@@ -166,19 +166,20 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           crossfadeAudioRef.current.volume = 0;
           crossfadeAudioRef.current.play().catch(() => {});
 
-          // 5-second crossfade: outgoing volume down, incoming volume up
-          const fadeSteps = 50; // 50 steps over 5 seconds = every 100ms
+          // 5-second crossfade with exactly 5 steps (100, 80, 60, 40, 20, 0)
+          const fadeSteps = 5;
           let step = 0;
           crossfadeIntervalRef.current = setInterval(() => {
             step++;
-            const ratio = step / fadeSteps;
+            const ratio = step / fadeSteps; // 0.2, 0.4, 0.6, 0.8, 1.0
             if (audioRef.current) audioRef.current.volume = Math.max(0, volume * (1 - ratio));
             if (crossfadeAudioRef.current) crossfadeAudioRef.current.volume = Math.min(volume, volume * ratio);
+            
             if (step >= fadeSteps) {
               if (crossfadeIntervalRef.current) clearInterval(crossfadeIntervalRef.current);
               crossfadeIntervalRef.current = null;
             }
-          }, 100);
+          }, 1000); // Trigger every 1 second
         }
       }
     };

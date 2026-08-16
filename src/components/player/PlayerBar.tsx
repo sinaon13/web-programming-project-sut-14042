@@ -47,7 +47,8 @@ export const PlayerBar: React.FC = () => {
               </div>
               {currentUser?.tier === 'GOLD' && (
                 <div className="text-[10px] text-amber-400 font-mono mt-0.5 truncate hidden sm:block">
-                  ▶ {(currentTrack.totalStreams || currentTrack.listenersCount * 2).toLocaleString()} {t.streams} • 👤 {currentTrack.listenersCount.toLocaleString()} {t.unique}
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" className="inline-block mr-1 -mt-0.5"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                  {(currentTrack.totalStreams || currentTrack.listenersCount * 2).toLocaleString()} {t.streams} • 👤 {currentTrack.listenersCount.toLocaleString()} {t.unique}
                 </div>
               )}
             </div>
@@ -59,15 +60,28 @@ export const PlayerBar: React.FC = () => {
         </div>
 
         <div className="flex flex-col items-center w-full md:w-2/4">
-          <div className="flex items-center space-x-3 mb-1">
-            <button onClick={toggleShuffle} className={`text-xs font-bold px-1 ${isShuffle ? '' : 'text-neutral-400 hover:text-white'}`} style={isShuffle ? { color: accentColor } : {}}>{t.shuffle}</button>
-            <button onClick={prevTrack} className="text-neutral-400 hover:text-white">⏮</button>
-            <button onClick={togglePlay} className="w-9 h-9 rounded-full flex items-center justify-center font-bold shadow hover:scale-105 transition" style={{ backgroundColor: accentColor, color: '#000' }}>
-              {isPlaying ? '⏸' : '▶'}
+          <div className="flex items-center space-x-4 mb-2">
+            <button onClick={toggleShuffle} className={`p-1.5 transition rounded-full ${isShuffle ? 'bg-white/10' : 'text-neutral-400 hover:text-white hover:bg-white/5'}`} style={isShuffle ? { color: accentColor } : {}}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="16 3 21 3 21 8"></polyline><line x1="4" y1="20" x2="21" y2="3"></line><polyline points="21 16 21 21 16 21"></polyline><line x1="15" y1="15" x2="21" y2="21"></line><line x1="4" y1="4" x2="9" y2="9"></line></svg>
             </button>
-            <button onClick={nextTrack} className="text-neutral-400 hover:text-white">⏭</button>
-            <button onClick={toggleRepeat} className={`text-xs font-bold px-1 ${repeatMode !== 'OFF' ? '' : 'text-neutral-400 hover:text-white'}`} style={repeatMode !== 'OFF' ? { color: accentColor } : {}}>{t.rep} [{repeatMode}]</button>
-            <DownloadButton track={currentTrack} />
+            <button onClick={prevTrack} className="p-1.5 text-neutral-400 hover:text-white transition rounded-full hover:bg-white/5">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><polygon points="19 20 9 12 19 4 19 20"></polygon><line x1="5" y1="19" x2="5" y2="5" stroke="currentColor" strokeWidth="2" strokeLinecap="round"></line></svg>
+            </button>
+            <button onClick={togglePlay} className="w-10 h-10 rounded-full flex items-center justify-center shadow-lg hover:scale-105 transition transform active:scale-95" style={{ backgroundColor: accentColor || '#1db954', color: '#000' }}>
+              {isPlaying ? (
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>
+              ) : (
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" style={{ marginLeft: '2px' }}><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+              )}
+            </button>
+            <button onClick={nextTrack} className="p-1.5 text-neutral-400 hover:text-white transition rounded-full hover:bg-white/5">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 4 15 12 5 20 5 4"></polygon><line x1="19" y1="5" x2="19" y2="19" stroke="currentColor" strokeWidth="2" strokeLinecap="round"></line></svg>
+            </button>
+            <button onClick={toggleRepeat} className={`p-1.5 transition rounded-full flex items-center ${repeatMode !== 'OFF' ? 'bg-white/10' : 'text-neutral-400 hover:text-white hover:bg-white/5'}`} style={repeatMode !== 'OFF' ? { color: accentColor } : {}}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="17 1 21 5 17 9"></polyline><path d="M3 11V9a4 4 0 0 1 4-4h14"></path><polyline points="7 23 3 19 7 15"></polyline><path d="M21 13v2a4 4 0 0 1-4 4H3"></path></svg>
+              {repeatMode === 'ONE' && <span className="absolute text-[8px] font-bold mt-0.5" style={{ marginLeft: '6px' }}>1</span>}
+            </button>
+            <div className="ml-2 scale-90 opacity-80 hover:opacity-100 transition"><DownloadButton track={currentTrack} /></div>
           </div>
 
           <div className="flex items-center space-x-2 w-full max-w-md">
@@ -104,7 +118,8 @@ export const PlayerBar: React.FC = () => {
           <button onClick={() => setIsFullScreen(true)} className="text-xs font-bold px-2.5 py-1 rounded border transition" style={{ backgroundColor: `${accentColor}20`, color: accentColor, borderColor: `${accentColor}50` }}>
             {t.expandPlayer}
           </button>
-          <button onClick={() => setShowQueue(!showQueue)} className={`text-xs px-2.5 py-1 rounded border font-bold transition ${showQueue ? 'text-black' : 'bg-neutral-800 text-neutral-300 hover:text-white border-neutral-700'}`} style={showQueue ? { backgroundColor: accentColor, borderColor: accentColor } : {}}>
+          <button onClick={() => setShowQueue(!showQueue)} className={`text-xs px-2.5 py-1 rounded border font-bold transition flex items-center gap-1.5 ${showQueue ? 'text-black' : 'bg-neutral-800 text-neutral-300 hover:text-white border-neutral-700'}`} style={showQueue ? { backgroundColor: accentColor, borderColor: accentColor } : {}}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="inline-block"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"></path></svg>
             {t.queue} ({queue.length})
           </button>
           {currentTrack.lyrics && (
@@ -148,13 +163,26 @@ export const PlayerBar: React.FC = () => {
             </div>
 
             <div className="flex items-center justify-center space-x-6 mb-8">
-              <button onClick={toggleShuffle} className={`text-sm font-bold ${isShuffle ? '' : 'text-neutral-400 hover:text-white'}`} style={isShuffle ? { color: accentColor } : {}}>{t.shuffle}</button>
-              <button onClick={prevTrack} className="text-2xl text-neutral-300 hover:text-white">⏮</button>
-              <button onClick={togglePlay} className="w-16 h-16 rounded-full flex items-center justify-center font-extrabold text-2xl shadow-xl hover:scale-105 transition" style={{ backgroundColor: accentColor, color: '#000' }}>
-                {isPlaying ? '⏸' : '▶'}
+              <button onClick={toggleShuffle} className={`p-3 transition rounded-full ${isShuffle ? 'bg-white/10' : 'text-neutral-400 hover:text-white hover:bg-white/5'}`} style={isShuffle ? { color: accentColor } : {}}>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="16 3 21 3 21 8"></polyline><line x1="4" y1="20" x2="21" y2="3"></line><polyline points="21 16 21 21 16 21"></polyline><line x1="15" y1="15" x2="21" y2="21"></line><line x1="4" y1="4" x2="9" y2="9"></line></svg>
               </button>
-              <button onClick={nextTrack} className="text-2xl text-neutral-300 hover:text-white">⏭</button>
-              <button onClick={toggleRepeat} className={`text-sm font-bold ${repeatMode !== 'OFF' ? '' : 'text-neutral-400 hover:text-white'}`} style={repeatMode !== 'OFF' ? { color: accentColor } : {}}>{t.rep} [{repeatMode}]</button>
+              <button onClick={prevTrack} className="p-3 text-neutral-300 hover:text-white transition rounded-full hover:bg-white/5">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor"><polygon points="19 20 9 12 19 4 19 20"></polygon><line x1="5" y1="19" x2="5" y2="5" stroke="currentColor" strokeWidth="2" strokeLinecap="round"></line></svg>
+              </button>
+              <button onClick={togglePlay} className="w-16 h-16 rounded-full flex items-center justify-center shadow-xl hover:scale-105 transition transform active:scale-95" style={{ backgroundColor: accentColor || '#1db954', color: '#000' }}>
+                {isPlaying ? (
+                  <svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>
+                ) : (
+                  <svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor" style={{ marginLeft: '4px' }}><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                )}
+              </button>
+              <button onClick={nextTrack} className="p-3 text-neutral-300 hover:text-white transition rounded-full hover:bg-white/5">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 4 15 12 5 20 5 4"></polygon><line x1="19" y1="5" x2="19" y2="19" stroke="currentColor" strokeWidth="2" strokeLinecap="round"></line></svg>
+              </button>
+              <button onClick={toggleRepeat} className={`p-3 transition rounded-full flex items-center justify-center relative ${repeatMode !== 'OFF' ? 'bg-white/10' : 'text-neutral-400 hover:text-white hover:bg-white/5'}`} style={repeatMode !== 'OFF' ? { color: accentColor } : {}}>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="17 1 21 5 17 9"></polyline><path d="M3 11V9a4 4 0 0 1 4-4h14"></path><polyline points="7 23 3 19 7 15"></polyline><path d="M21 13v2a4 4 0 0 1-4 4H3"></path></svg>
+                {repeatMode === 'ONE' && <span className="absolute text-[10px] font-bold" style={{ top: '50%', left: '50%', transform: 'translate(-50%, -50%)' }}>1</span>}
+              </button>
             </div>
 
             {/* Advanced controls in fullscreen */}

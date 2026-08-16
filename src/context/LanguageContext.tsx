@@ -25,7 +25,7 @@ export const dictionary = {
     rep: 'REP',
     lyrics: 'Lyrics',
     vol: 'Vol',
-    queue: '📑 Queue',
+    queue: 'Queue',
     upNext: 'Up Next in Queue',
     emptyQueue: 'Your queue is currently empty.',
     closeLyrics: 'Close Lyrics',
@@ -67,7 +67,7 @@ export const dictionary = {
     createBtn: 'Create',
     noPlaylists: 'No playlists found. Create your first playlist above!',
     renameBtn: '✏️ Rename',
-    deleteBtn: '🗑️ Delete',
+    deleteBtn: 'Delete',
     noSongsInList: 'No songs in this list yet.',
     addSongsFromArchive: '➕ Add Songs from Archive',
 
@@ -107,7 +107,7 @@ export const dictionary = {
     notifEmail: 'Send system notifications directly to my registered email',
     interfaceLang: 'Interface Language',
     savePrefs: 'Save All Preferences',
-    deleteAccountBtn: '🗑️ Delete Account & All Data',
+    deleteAccountBtn: 'Delete Account & All Data',
     deleteAccountConfirm: '⚠️ WARNING: This will permanently delete your account, playlists, tickets, and all uploaded works! Proceed?',
 
     // Artist Portal & Profile
@@ -181,7 +181,7 @@ export const dictionary = {
     rep: 'تکرار',
     lyrics: 'متن آهنگ',
     vol: 'صدا',
-    queue: '📑 صف پخش',
+    queue: 'صف پخش',
     upNext: 'آهنگ‌های بعدی در صف',
     emptyQueue: 'صف پخش شما در حال حاضر خالی است.',
     closeLyrics: 'بستن متن آهنگ',
@@ -223,7 +223,7 @@ export const dictionary = {
     createBtn: 'ایجاد',
     noPlaylists: 'هیچ پلی‌لیستی یافت نشد. اولین پلی‌لیست خود را در بالا بسازید!',
     renameBtn: '✏️ تغییر نام',
-    deleteBtn: '🗑️ حذف',
+    deleteBtn: 'حذف',
     noSongsInList: 'هنوز آهنگی به این لیست اضافه نشده است.',
     addSongsFromArchive: '➕ افزودن آهنگ از آرشیو',
 
@@ -263,7 +263,7 @@ export const dictionary = {
     notifEmail: 'ارسال اعلانات سیستمی به ایمیل ثبت‌شده من',
     interfaceLang: 'زبان رابط کاربری',
     savePrefs: 'ذخیره تمامی تنظیمات',
-    deleteAccountBtn: '🗑️ حذف کامل حساب کاربری و تمامی داده‌ها',
+    deleteAccountBtn: 'حذف کامل حساب کاربری و تمامی داده‌ها',
     deleteAccountConfirm: '⚠️ هشدار: با این کار حساب کاربری، پلی‌لیست‌ها، تیکت‌ها و تمامی آثار منتشرشده شما برای همیشه حذف خواهند شد! ادامه می‌دهید؟',
 
     // Artist Portal & Profile

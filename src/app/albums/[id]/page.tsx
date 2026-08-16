@@ -76,7 +76,8 @@ export default function AlbumDetailPage() {
             <div className="flex items-center space-x-3 flex-shrink-0">
               {currentUser?.tier === 'GOLD' && (
                 <span className="text-[11px] font-mono bg-amber-500/10 text-amber-400 border border-amber-500/30 px-2.5 py-1 rounded hidden sm:inline-block">
-                  ▶ {(track.totalStreams || track.listenersCount * 2).toLocaleString()} {t.streams}
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" className="inline-block mr-1 -mt-0.5"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                  {(track.totalStreams || track.listenersCount * 2).toLocaleString()} {t.streams}
                 </span>
               )}
               <PlaylistMenu trackId={track.id} />

@@ -97,6 +97,7 @@ export async function apiCall<T = any>(
     if (newToken) {
       headers['Authorization'] = `Bearer ${newToken}`;
       const retryResponse = await fetch(`${BASE_URL}${endpoint}`, {
+        cache: 'no-store',
         ...options,
         headers,
       });

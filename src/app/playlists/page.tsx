@@ -137,7 +137,10 @@ export default function PlaylistsPage() {
                     <h3 className="font-bold text-white text-md truncate pr-2">{pl.name} ({plTracks.length})</h3>
                     <div className="flex items-center space-x-2 flex-shrink-0">
                       <button onClick={() => handleRename(pl.id, pl.name)} title="Rename Playlist" className="p-1.5 bg-neutral-800 hover:bg-neutral-700 text-neutral-300 rounded text-xs">{t.renameBtn}</button>
-                      <button onClick={() => handleDelete(pl.id)} title="Delete Playlist" className="p-1.5 bg-red-600/20 hover:bg-red-600/40 text-red-400 rounded text-xs">{t.deleteBtn}</button>
+                      <button onClick={() => handleDelete(pl.id)} title="Delete Playlist" className="p-1.5 bg-red-600/20 hover:bg-red-600/40 text-red-400 rounded text-xs flex items-center">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="inline-block mr-1"><path d="M3 6h18"></path><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                        {t.deleteBtn}
+                      </button>
                     </div>
                   </div>
 
@@ -159,7 +162,10 @@ export default function PlaylistsPage() {
                             )}
                           </div>
                           <div className="flex items-center space-x-3 flex-shrink-0">
-                            <button onClick={() => handlePlayFromPlaylist(tItem, plTracks, pl)} className="text-green-400 font-bold hover:underline">▶ {t.play}</button>
+                            <button onClick={() => handlePlayFromPlaylist(tItem, plTracks, pl)} className="text-green-400 font-bold hover:underline flex items-center">
+                              <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" className="mr-1"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                              {t.play}
+                            </button>
                             <button onClick={() => removeTrackFromPlaylist(pl.id, tItem.id)} title="Remove from Playlist" className="text-neutral-500 hover:text-red-400">✕</button>
                           </div>
                         </div>
