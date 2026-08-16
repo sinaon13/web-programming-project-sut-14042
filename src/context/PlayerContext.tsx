@@ -115,13 +115,8 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     const handleLoadedMetadata = () => {
       if (audioRef.current) setDuration(audioRef.current.duration || 100);
     };
-    const handleEnded = () => {
-      handleTrackEnd();
-    };
-
     audioRef.current.addEventListener('timeupdate', handleTimeUpdate);
     audioRef.current.addEventListener('loadedmetadata', handleLoadedMetadata);
-    audioRef.current.addEventListener('ended', handleEnded);
 
     const handleLogoutShutdown = () => {
       stopAndClosePlayer();
@@ -133,7 +128,7 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         audioRef.current.pause();
         audioRef.current.removeEventListener('timeupdate', handleTimeUpdate);
         audioRef.current.removeEventListener('loadedmetadata', handleLoadedMetadata);
-        audioRef.current.removeEventListener('ended', handleEnded);
+        audioRef.current.onended = null;
       }
       if (crossfadeAudioRef.current) {
         crossfadeAudioRef.current.pause();
@@ -376,9 +371,15 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     playTrack(previousSong, playlist);
   };
 
-  const handleTrackEnd = () => {
+  const handleTrackEnd = useCallback(() => {
     nextTrack();
-  };
+  }, [nextTrack]);
+
+  useEffect(() => {
+    if (audioRef.current) {
+      audioRef.current.onended = handleTrackEnd;
+    }
+  }, [handleTrackEnd]);
 
   return (
     <PlayerContext.Provider value={{

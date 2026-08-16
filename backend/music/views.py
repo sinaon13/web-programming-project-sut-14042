@@ -71,6 +71,24 @@ class TrackListCreateView(generics.ListCreateAPIView):
                 qs = qs.filter(is_early_access=False)
         return qs
 
+    def perform_create(self, serializer):
+        track = serializer.save(artist=self.request.user)
+        
+        # Notify followers
+        from notifications.models import Notification
+        followers = self.request.user.followers.all()
+        notifications = [
+            Notification(
+                recipient=follower,
+                title="New Music Released",
+                message=f"{self.request.user.display_name or self.request.user.username} just released a new track: {track.title}!",
+                notification_type='SYSTEM'
+            )
+            for follower in followers
+        ]
+        Notification.objects.bulk_create(notifications)
+
+
 
 class TrackDetailView(generics.RetrieveUpdateDestroyAPIView):
     """
@@ -197,6 +215,23 @@ class AlbumListCreateView(generics.ListCreateAPIView):
 
     def get_queryset(self):
         return Album.objects.select_related('artist').all()
+
+    def perform_create(self, serializer):
+        album = serializer.save(artist=self.request.user)
+        
+        # Notify followers
+        from notifications.models import Notification
+        followers = self.request.user.followers.all()
+        notifications = [
+            Notification(
+                recipient=follower,
+                title="New Album Released",
+                message=f"{self.request.user.display_name or self.request.user.username} just released a new album: {album.title}!",
+                notification_type='SYSTEM'
+            )
+            for follower in followers
+        ]
+        Notification.objects.bulk_create(notifications)
 
 
 class AlbumDetailView(generics.RetrieveUpdateDestroyAPIView):

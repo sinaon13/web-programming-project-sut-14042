@@ -6,11 +6,14 @@ from django.utils import timezone
 from rest_framework import generics, status
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated, AllowAny
+from rest_framework.permissions import IsAuthenticated, AllowAny, IsAdminUser
 from django.shortcuts import get_object_or_404
+from django.core.cache import cache
 
 from accounts.permissions import IsAdmin
 from .models import SubscriptionPlan, UserSubscription, Transaction
+from .utils import get_current_time
+from notifications.models import Notification
 from .serializers import (
     SubscriptionPlanSerializer,
     PlanPriceUpdateSerializer,
@@ -73,6 +76,7 @@ class PurchaseView(APIView):
     def post(self, request):
         serializer = PurchaseSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
+        months = serializer.validated_data.get('months', 1)
 
         plan = get_object_or_404(
             SubscriptionPlan, pk=serializer.validated_data['plan_id'], is_active=True,
@@ -84,7 +88,7 @@ class PurchaseView(APIView):
                 user=request.user,
                 defaults={
                     'plan': plan,
-                    'expires_at': timezone.now() + timedelta(days=plan.duration_days),
+                    'expires_at': get_current_time() + timedelta(days=plan.duration_days * months),
                     'is_active': True,
                 },
             )
@@ -94,14 +98,14 @@ class PurchaseView(APIView):
             })
 
         # Call Zarinpal sandbox to get payment authority
-        amount = int(plan.price)  # Zarinpal expects integer Rials
+        amount = int(plan.price) * months  # Zarinpal expects integer Rials
         try:
             zp_response = requests.post(
                 self.ZARINPAL_REQUEST_URL,
                 json={
                     'merchant_id': self.MERCHANT_ID,
                     'amount': str(amount),
-                    'description': f'Subscription: {plan.name} ({plan.tier})',
+                    'description': f'Subscription: {plan.name} ({plan.tier}) - {months} Months',
                     'callback_url': self.CALLBACK_URL,
                 },
                 headers={'Content-Type': 'application/json'},
@@ -126,7 +130,8 @@ class PurchaseView(APIView):
         Transaction.objects.create(
             user=request.user,
             plan=plan,
-            amount=plan.price,
+            months=months,
+            amount=amount,
             authority=authority,
             status=Transaction.Status.PENDING,
         )
@@ -136,7 +141,7 @@ class PurchaseView(APIView):
         return Response({
             'authority': authority,
             'payment_url': payment_url,
-            'amount': str(plan.price),
+            'amount': str(amount),
         })
 
 
@@ -206,11 +211,12 @@ class VerifyPaymentView(APIView):
 
             # Activate / extend subscription
             plan = transaction.plan
+            months = transaction.months
             sub, _ = UserSubscription.objects.update_or_create(
                 user=request.user,
                 defaults={
                     'plan': plan,
-                    'expires_at': timezone.now() + timedelta(days=plan.duration_days),
+                    'expires_at': get_current_time() + timedelta(days=plan.duration_days * months),
                     'is_active': True,
                 },
             )
@@ -237,3 +243,68 @@ class TransactionHistoryView(generics.ListAPIView):
 
     def get_queryset(self):
         return Transaction.objects.filter(user=self.request.user)
+
+class AdvanceTimeView(APIView):
+    """POST /api/subscriptions/advance-time/ — Admin advances time for testing."""
+    permission_classes = [IsAdminUser]
+
+    def post(self, request):
+        days = int(request.data.get('days', 0))
+        current_offset = cache.get('time_offset_days', 0)
+        new_offset = current_offset + days
+        cache.set('time_offset_days', new_offset, None)
+        
+        now = get_current_time()
+        expired_subs = UserSubscription.objects.filter(is_active=True, expires_at__lte=now)
+        count = expired_subs.count()
+        for sub in expired_subs:
+            sub.is_active = False
+            sub.save(update_fields=['is_active'])
+            Notification.objects.create(
+                recipient=sub.user,
+                title="Subscription Expired",
+                message="Your premium subscription has expired.",
+                notification_type=Notification.Type.SYSTEM
+            )
+
+        # 30-day payout logic
+        from accounts.models import CustomUser
+        from music.models import StreamLog
+        old_cycles = current_offset // 30
+        new_cycles = new_offset // 30
+        
+        payouts_processed = 0
+        if new_cycles > old_cycles:
+            # We crossed a 30-day boundary, process payouts
+            artists = CustomUser.objects.filter(role='ARTIST', artist_status='APPROVED')
+            for artist in artists:
+                total_streams = StreamLog.objects.filter(track__artist=artist).count()
+                unpaid_streams = total_streams - artist.streams_settled
+                
+                if unpaid_streams > 0:
+                    if artist.is_monetized:
+                        payout = unpaid_streams * 200
+                        artist.total_earnings += payout
+                        Notification.objects.create(
+                            recipient=artist,
+                            title="Monthly Payout Processed",
+                            message=f"You earned {payout} IRR from {unpaid_streams} streams this month!",
+                            notification_type=Notification.Type.PAYOUT
+                        )
+                    else:
+                        Notification.objects.create(
+                            recipient=artist,
+                            title="Monetization Status",
+                            message=f"Your streams ({unpaid_streams}) were not monetized. Please request monetization.",
+                            notification_type=Notification.Type.SYSTEM
+                        )
+                    
+                    artist.streams_settled = total_streams
+                    artist.save(update_fields=['total_earnings', 'streams_settled'])
+            payouts_processed = artists.count()
+        
+        return Response({
+            'detail': f'Advanced time by {days} days. Total offset: {new_offset} days.',
+            'expired_count': count,
+            'payouts_processed': payouts_processed
+        })

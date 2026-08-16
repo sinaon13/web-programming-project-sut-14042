@@ -47,8 +47,8 @@ export default function HomePage() {
       // Playlists
       try {
         const res = await playlistsAPI.getPlaylists();
-        const pls = (res as any).results || (Array.isArray(res) ? res : []);
-        setRecentPlaylists(pls.map(adaptPlaylist).slice(0, 4));
+        const pls = ((res as any).results || (Array.isArray(res) ? res : [])).map(adaptPlaylist);
+        setRecentPlaylists(pls.filter((p: Playlist) => p.ownerId === String(currentUser.id)).slice(0, 4));
       } catch {
         offline = true;
       }

@@ -16,8 +16,8 @@ export const PlaylistMenu: React.FC<{ trackId: string }> = ({ trackId }) => {
       const fetchPlaylists = async () => {
         try {
           const res = await playlistsAPI.getPlaylists();
-          const list = (res as any).results || (Array.isArray(res) ? res : []);
-          setMyPlaylists(list.map(adaptPlaylist));
+          const list = ((res as any).results || (Array.isArray(res) ? res : [])).map(adaptPlaylist);
+          setMyPlaylists(list.filter((p: Playlist) => p.ownerId === String(currentUser.id)));
         } catch {
           // Backend offline or error, fail silently or handle error state
         }
@@ -31,7 +31,7 @@ export const PlaylistMenu: React.FC<{ trackId: string }> = ({ trackId }) => {
   const toggleTrackInPlaylist = async (plId: string) => {
     const pl = myPlaylists.find(p => p.id === plId);
     if (!pl) return;
-    const exists = pl.trackIds.includes(trackId);
+    const exists = (pl.trackIds || []).includes(trackId);
     try {
       if (exists) {
         await playlistsAPI.removeTrack(plId, trackId);
@@ -39,9 +39,10 @@ export const PlaylistMenu: React.FC<{ trackId: string }> = ({ trackId }) => {
         await playlistsAPI.addTrack(plId, trackId);
       }
       const res = await playlistsAPI.getPlaylists();
-      setMyPlaylists(((res as any).results || (Array.isArray(res) ? res : [])).map(adaptPlaylist));
-    } catch {
-      alert('Failed to modify playlist. Is the backend offline?');
+      const list = ((res as any).results || (Array.isArray(res) ? res : [])).map(adaptPlaylist);
+      setMyPlaylists(list.filter((p: Playlist) => p.ownerId === String(currentUser.id)));
+    } catch (err: any) {
+      alert(`Failed to modify playlist: ${err.message || 'Is the backend offline?'}`);
     }
   };
 
@@ -73,7 +74,7 @@ export const PlaylistMenu: React.FC<{ trackId: string }> = ({ trackId }) => {
             ) : (
               <div className="max-h-48 overflow-y-auto space-y-1.5">
                 {myPlaylists.map(pl => {
-                  const isChecked = pl.trackIds.includes(trackId);
+                  const isChecked = (pl.trackIds || []).includes(trackId);
                   return (
                     <label key={pl.id} className="flex items-center space-x-2.5 p-1.5 hover:bg-neutral-800 rounded cursor-pointer text-xs text-neutral-200">
                       <input

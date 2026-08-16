@@ -59,6 +59,7 @@ class Transaction(models.Model):
         settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='transactions',
     )
     plan = models.ForeignKey(SubscriptionPlan, on_delete=models.PROTECT)
+    months = models.PositiveIntegerField(default=1)
     amount = models.DecimalField(max_digits=12, decimal_places=0)
     authority = models.CharField(max_length=255, blank=True, default='', help_text='Payment gateway authority code')
     ref_id = models.CharField(max_length=255, blank=True, default='', help_text='Payment reference ID')

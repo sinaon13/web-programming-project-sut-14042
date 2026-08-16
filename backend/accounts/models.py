@@ -46,6 +46,11 @@ class CustomUser(AbstractUser):
     rejection_reason = models.TextField(blank=True, default='')
     is_verified = models.BooleanField(default=False)
 
+    # Monetization
+    is_monetized = models.BooleanField(default=False)
+    total_earnings = models.DecimalField(max_digits=12, decimal_places=0, default=0)
+    streams_settled = models.IntegerField(default=0)
+
     # Self-referential many-to-many for following
     following = models.ManyToManyField(
         'self', symmetrical=False, related_name='followers', blank=True,

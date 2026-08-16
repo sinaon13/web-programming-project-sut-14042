@@ -74,6 +74,24 @@ export default function ProfilePage() {
           <span className="text-xs text-neutral-400">Daily Streams</span>
         </div>
       </div>
+
+      {currentUser.role === 'ARTIST' && (
+        <div className="p-6 bg-neutral-900 border border-neutral-800 rounded-xl shadow-lg mt-6">
+          <h3 className="text-lg font-bold text-white mb-2">Monetization & Earnings</h3>
+          <div className="flex items-center justify-between">
+            <div>
+              <span className="text-xs text-neutral-400 uppercase font-semibold">Total Payouts Earned</span>
+              <span className="block text-3xl font-extrabold text-amber-400 mt-1">{currentUser.totalEarnings?.toLocaleString() || 0} IRR</span>
+            </div>
+            <div className="text-right">
+              <span className="text-xs text-neutral-400 uppercase font-semibold block mb-1">Status</span>
+              <span className={`px-3 py-1 rounded-full text-xs font-bold ${currentUser.isMonetized ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
+                {currentUser.isMonetized ? 'Enabled (Active)' : 'Disabled'}
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

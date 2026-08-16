@@ -80,6 +80,8 @@ class UserProfileSerializer(serializers.ModelSerializer):
     followers_count = serializers.SerializerMethodField()
     following_count = serializers.SerializerMethodField()
     tier = serializers.SerializerMethodField()
+    subscription_expires_at = serializers.SerializerMethodField()
+    subscription_days_left = serializers.SerializerMethodField()
 
     class Meta:
         model = User
@@ -88,11 +90,11 @@ class UserProfileSerializer(serializers.ModelSerializer):
             'avatar', 'birth_date', 'gender', 'bio', 'portfolio_url',
             'artist_status', 'rejection_reason', 'is_verified',
             'followers_count', 'following_count',
-            'date_joined', 'tier',
+            'date_joined', 'tier', 'is_monetized', 'total_earnings', 'subscription_expires_at', 'subscription_days_left',
         ]
         read_only_fields = [
             'id', 'email', 'role', 'artist_status', 'rejection_reason',
-            'is_verified', 'date_joined', 'tier',
+            'is_verified', 'date_joined', 'tier', 'is_monetized', 'total_earnings', 'subscription_expires_at', 'subscription_days_left',
         ]
 
     def get_followers_count(self, obj):
@@ -102,19 +104,35 @@ class UserProfileSerializer(serializers.ModelSerializer):
         return obj.following.count()
 
     def get_tier(self, obj):
-        if hasattr(obj, 'subscription'):
-            sub = obj.subscription
-            if sub and sub.is_active and sub.plan:
-                return sub.plan.tier
-        return 'BASIC'
+        from subscriptions.models import UserSubscription
+        from subscriptions.utils import get_current_time
+        sub = UserSubscription.objects.filter(user=obj, is_active=True, expires_at__gt=get_current_time()).first()
+        return sub.plan.tier if sub else 'BASIC'
+        
+    def get_subscription_expires_at(self, obj):
+        from subscriptions.models import UserSubscription
+        from subscriptions.utils import get_current_time
+        sub = UserSubscription.objects.filter(user=obj, is_active=True, expires_at__gt=get_current_time()).first()
+        return sub.expires_at if sub else None
+
+    def get_subscription_days_left(self, obj):
+        from subscriptions.models import UserSubscription
+        from subscriptions.utils import get_current_time
+        sub = UserSubscription.objects.filter(user=obj, is_active=True, expires_at__gt=get_current_time()).first()
+        if sub:
+            delta = sub.expires_at - get_current_time()
+            return max(0, delta.days)
+        return 0
 
     def validate_avatar(self, value):
         user = self.context['request'].user
         tier = 'BASIC'
         if hasattr(user, 'subscription'):
             sub = user.subscription
-            if sub and sub.is_active and sub.plan:
-                tier = sub.plan.tier
+            if sub and sub.plan:
+                from subscriptions.utils import get_current_time
+                if sub.is_active and sub.expires_at > get_current_time():
+                    tier = sub.plan.tier
         
         if tier == 'BASIC':
             raise serializers.ValidationError('Avatar upload is restricted on Free Basic tier. Please upgrade to Silver or Gold.')
@@ -126,12 +144,13 @@ class PublicUserSerializer(serializers.ModelSerializer):
 
     followers_count = serializers.SerializerMethodField()
     is_following = serializers.SerializerMethodField()
+    subscription_days_left = serializers.SerializerMethodField()
 
     class Meta:
         model = User
         fields = [
             'id', 'username', 'display_name', 'role', 'avatar',
-            'bio', 'is_verified', 'followers_count', 'is_following',
+            'bio', 'is_verified', 'followers_count', 'is_following', 'subscription_days_left',
         ]
 
     def get_followers_count(self, obj):
@@ -142,6 +161,15 @@ class PublicUserSerializer(serializers.ModelSerializer):
         if request and request.user.is_authenticated:
             return request.user.following.filter(pk=obj.pk).exists()
         return False
+
+    def get_subscription_days_left(self, obj):
+        from subscriptions.models import UserSubscription
+        from subscriptions.utils import get_current_time
+        sub = UserSubscription.objects.filter(user=obj, is_active=True, expires_at__gt=get_current_time()).first()
+        if sub:
+            delta = sub.expires_at - get_current_time()
+            return max(0, delta.days)
+        return 0
 
 
 class UserPreferencesSerializer(serializers.ModelSerializer):

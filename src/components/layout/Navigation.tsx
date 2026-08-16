@@ -38,7 +38,12 @@ export const Navigation: React.FC = () => {
           <img src={currentUser.avatar} alt="Avatar" className="w-11 h-11 rounded-full border-2 border-green-500 object-cover" />
           <div className="truncate px-2">
             <h3 className="font-bold text-white text-sm truncate">{currentUser.name}</h3>
-            <span className="text-[11px] text-green-400 font-semibold uppercase block">{currentUser.role} • {currentUser.tier}</span>
+            <span className="text-[11px] text-green-400 font-semibold uppercase block">
+              {currentUser.role} • {currentUser.tier} 
+              {currentUser.subscriptionDaysLeft !== undefined && currentUser.tier !== 'BASIC' && (
+                <span className="text-neutral-400 ml-1 lowercase">({currentUser.subscriptionDaysLeft} days left)</span>
+              )}
+            </span>
           </div>
         </div>
 

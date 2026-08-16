@@ -86,7 +86,7 @@ export default function SupportTicketsPage() {
               <div className="space-y-2 max-h-48 overflow-y-auto pt-1">
                 {tItem.messages.map((m, idx) => (
                   <div key={idx} className="text-xs bg-black/40 p-3 rounded-lg border border-neutral-800/60">
-                    <span className="font-bold text-green-400">{m.sender}: </span><span className="text-neutral-300">{m.text}</span>
+                    <span className={`font-bold ${m.sender === 'Support / Admin' ? 'text-amber-400' : 'text-green-400'}`}>{m.sender}: </span><span className="text-neutral-300">{m.text}</span>
                   </div>
                 ))}
               </div>

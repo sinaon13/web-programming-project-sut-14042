@@ -139,10 +139,12 @@ export const dictionary = {
     editBtn: '✏️ Edit',
     cancelEdit: 'Cancel Edit',
     followArtist: 'Follow Artist',
-    followingArtist: 'Following',
+    followingArtist: 'Unfollow',
     aboutBio: 'About / Biography',
     releasedAlbums: 'Released Albums',
     completeDiscography: 'Complete Discography',
+    savePriceChanges: 'Save Price Changes',
+    unsettled: 'Unsettled Streams',
 
     // Admin Panel
     verificationsTab: 'Verifications',
@@ -292,11 +294,14 @@ export const dictionary = {
     colActions: 'عملیات',
     editBtn: '✏️ ویرایش',
     cancelEdit: 'لغو ویرایش',
+    editProfile: 'ویرایش نمایه',
     followArtist: 'دنبال کردن هنرمند',
-    followingArtist: 'دنبال‌شده',
-    aboutBio: 'درباره هنرمند / بیوگرافی',
-    releasedAlbums: 'آلبوم‌های منتشرشده',
-    completeDiscography: 'آرشیو کامل آثار',
+    followingArtist: 'لغو دنبال کردن',
+    aboutBio: 'درباره / بیوگرافی',
+    releasedAlbums: 'آلبوم‌های منتشر شده',
+    completeDiscography: 'دیسکوگرافی کامل',
+    savePriceChanges: 'ذخیره تغییرات قیمت',
+    unsettled: 'استریم‌های تسویه‌نشده',
 
     // Admin Panel
     verificationsTab: 'تایید هنرمندان',

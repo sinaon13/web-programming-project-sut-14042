@@ -24,17 +24,21 @@ class PlaylistListSerializer(serializers.ModelSerializer):
 
     owner_display = serializers.CharField(source='owner.display_name', read_only=True)
     track_count = serializers.SerializerMethodField()
+    track_ids = serializers.SerializerMethodField()
 
     class Meta:
         model = Playlist
         fields = [
             'id', 'title', 'owner', 'owner_display', 'cover',
-            'is_public', 'track_count', 'created_at', 'updated_at',
+            'is_public', 'track_count', 'track_ids', 'created_at', 'updated_at',
         ]
         read_only_fields = ['id', 'owner', 'created_at', 'updated_at']
 
     def get_track_count(self, obj):
         return obj.playlist_tracks.count()
+
+    def get_track_ids(self, obj):
+        return list(obj.playlist_tracks.values_list('track_id', flat=True))
 
 
 class PlaylistDetailSerializer(serializers.ModelSerializer):

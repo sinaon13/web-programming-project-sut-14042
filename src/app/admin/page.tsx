@@ -22,6 +22,7 @@ export default function AdminPortalPage() {
   const [goldPrice, setGoldPrice] = useState(120000);
   
   const [replyTexts, setReplyTexts] = useState<Record<string, string>>({});
+  const [advanceTimeDays, setAdvanceTimeDays] = useState(30);
   const [backendOffline, setBackendOffline] = useState(false);
 
   const loadData = async () => {
@@ -118,6 +119,15 @@ export default function AdminPortalPage() {
     }
   };
 
+  const handleAdvanceTime = async () => {
+    try {
+      const res = await subscriptionsAPI.advanceTime(advanceTimeDays);
+      alert((res as any).detail || 'Time advanced successfully!');
+    } catch {
+      alert('Failed to advance time.');
+    }
+  };
+
   const handleCloseTicket = async (ticketId: string | number) => {
     if (!confirm('Mark this support ticket as formally CLOSED?')) return;
     try {
@@ -190,6 +200,7 @@ export default function AdminPortalPage() {
                 <div>
                   <span className="font-mono text-xs font-bold text-green-400 mr-2">#{tItem.id}</span>
                   <span className="font-bold text-white text-sm">{tItem.subject}</span>
+                  <span className="text-xs text-neutral-400 ml-2">by {tItem.user_display}</span>
                 </div>
                 <div className="flex items-center gap-3">
                   <span className="text-[11px] text-neutral-400">Sent: {new Date(tItem.created_at).toLocaleDateString()}</span>
@@ -204,7 +215,7 @@ export default function AdminPortalPage() {
               <div className="space-y-2 max-h-40 overflow-y-auto">
                 {tItem.messages?.map((m: any, idx: number) => (
                   <div key={idx} className="text-xs bg-black/40 p-2 rounded">
-                    <span className="font-bold text-green-400">{m.sender_name || 'User'}: </span><span className="text-neutral-300">{m.body}</span>
+                    <span className={`font-bold ${m.sender_role === 'ADMIN' || m.sender_role === 'SUPPORT' ? 'text-amber-400' : 'text-green-400'}`}>{m.sender_role === 'ADMIN' || m.sender_role === 'SUPPORT' ? 'Support / Admin' : (m.sender_display || 'User')}: </span><span className="text-neutral-300">{m.body}</span>
                   </div>
                 ))}
               </div>
@@ -236,7 +247,9 @@ export default function AdminPortalPage() {
                 <tr className="border-b border-neutral-800 text-xs text-neutral-400">
                   <th className="pb-3">Artist Name & ID</th>
                   <th className="pb-3">Total Registered Streams</th>
+                  <th className="pb-3">Unpaid Streams</th>
                   <th className="pb-3">Calculated Payout</th>
+                  <th className="pb-3">Monetization</th>
                   <th className="pb-3">Action (Admin Only)</th>
                 </tr>
               </thead>
@@ -245,9 +258,15 @@ export default function AdminPortalPage() {
                   <tr key={art.artist_id} className="hover:bg-neutral-800/30">
                     <td className="py-3 font-bold text-white">{art.artist_name} <span className="text-[10px] text-neutral-500 block">({art.artist_email})</span></td>
                     <td className="py-3 text-neutral-300">{art.stream_count.toLocaleString()}</td>
+                    <td className="py-3 text-neutral-300">{art.unpaid_streams?.toLocaleString() || 0}</td>
                     <td className="py-3 font-mono text-amber-400 font-bold">{parseFloat(art.payout_amount).toLocaleString()} Rials</td>
                     <td className="py-3">
-                      <button onClick={() => handleSettleArtist(art.artist_id)} className="px-3 py-1 bg-green-500 text-black font-bold text-xs rounded hover:bg-green-400">{t.confirmSettlement}</button>
+                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${art.is_monetized ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>{art.is_monetized ? 'Enabled' : 'Disabled'}</span>
+                    </td>
+                    <td className="py-3">
+                      <button onClick={() => handleSettleArtist(art.artist_id)} className={`px-3 py-1 text-black font-bold text-xs rounded ${art.is_monetized ? 'bg-red-500 hover:bg-red-400' : 'bg-green-500 hover:bg-green-400'}`}>
+                        {art.is_monetized ? 'Revoke Monetization' : 'Confirm Monetization'}
+                      </button>
                     </td>
                   </tr>
                 ))}
@@ -301,8 +320,30 @@ export default function AdminPortalPage() {
               <label className="block text-xs font-semibold text-neutral-400 mb-1">Gold VIP Tier Price (IRR)</label>
               <input type="number" value={goldPrice} onChange={e => setGoldPrice(Number(e.target.value))} required className="w-full p-2 bg-neutral-800 border border-neutral-700 rounded text-sm text-white font-mono" />
             </div>
-            <button type="submit" className="w-full py-2.5 bg-amber-400 text-black font-bold text-xs rounded hover:bg-amber-300 transition shadow">Update Live System Prices</button>
+            <button type="submit" className="w-full py-3 bg-amber-500 text-black font-bold rounded-xl hover:bg-amber-400 transition shadow-lg">{t.savePriceChanges}</button>
           </form>
+
+          <div className="p-6 bg-neutral-900 border border-neutral-800 rounded-xl shadow-xl mt-6">
+            <h3 className="text-lg font-bold text-white mb-4">Time Travel (Testing & Debug)</h3>
+            <p className="text-sm text-neutral-400 mb-4">
+              Advance the global backend clock to test subscription expirations. Subscriptions that pass their expiration date will be automatically deactivated and users will be notified.
+            </p>
+            <div className="flex space-x-4">
+              <input
+                type="number"
+                min="1"
+                value={advanceTimeDays}
+                onChange={e => setAdvanceTimeDays(parseInt(e.target.value))}
+                className="w-32 bg-neutral-800 border border-neutral-700 rounded-xl p-3 text-white text-sm"
+              />
+              <button 
+                onClick={handleAdvanceTime}
+                className="px-6 py-3 bg-red-600 hover:bg-red-500 text-white font-bold rounded-xl transition shadow-lg"
+              >
+                Advance {advanceTimeDays} Days
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

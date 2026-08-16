@@ -6,6 +6,7 @@ from .views import (
     PurchaseView,
     VerifyPaymentView,
     TransactionHistoryView,
+    AdvanceTimeView,
 )
 
 urlpatterns = [
@@ -15,4 +16,5 @@ urlpatterns = [
     path('purchase/', PurchaseView.as_view(), name='purchase'),
     path('verify-payment/', VerifyPaymentView.as_view(), name='verify-payment'),
     path('transactions/', TransactionHistoryView.as_view(), name='transaction-history'),
+    path('advance-time/', AdvanceTimeView.as_view(), name='advance-time'),
 ]

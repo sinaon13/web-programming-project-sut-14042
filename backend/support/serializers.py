@@ -14,7 +14,7 @@ class TicketMessageSerializer(serializers.ModelSerializer):
     class Meta:
         model = TicketMessage
         fields = ['id', 'ticket', 'sender', 'sender_display', 'sender_role', 'body', 'created_at']
-        read_only_fields = ['id', 'sender', 'created_at']
+        read_only_fields = ['id', 'ticket', 'sender', 'created_at']
 
 
 class TicketListSerializer(serializers.ModelSerializer):
@@ -22,11 +22,13 @@ class TicketListSerializer(serializers.ModelSerializer):
 
     user_display = serializers.CharField(source='user.display_name', read_only=True)
 
+    messages = TicketMessageSerializer(many=True, read_only=True)
+
     class Meta:
         model = Ticket
         fields = [
             'id', 'user', 'user_display', 'subject', 'status',
-            'priority', 'created_at', 'updated_at',
+            'priority', 'created_at', 'updated_at', 'messages',
         ]
         read_only_fields = ['id', 'user', 'status', 'created_at', 'updated_at']
 

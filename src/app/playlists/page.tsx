@@ -27,9 +27,9 @@ export default function PlaylistsPage() {
       try {
         const plRes = await playlistsAPI.getPlaylists();
         const trRes = await musicAPI.getTracks();
-        const pls = (plRes as any).results || (Array.isArray(plRes) ? plRes : []);
+        const pls = ((plRes as any).results || (Array.isArray(plRes) ? plRes : [])).map(adaptPlaylist);
         const trks = (trRes as any).results || (Array.isArray(trRes) ? trRes : []);
-        setPlaylists(pls.map(adaptPlaylist));
+        setPlaylists(pls.filter((p: Playlist) => p.ownerId === String(currentUser.id)));
         setAllTracks(trks.map(adaptTrack));
         setBackendOffline(false);
       } catch {
@@ -50,8 +50,8 @@ export default function PlaylistsPage() {
     try {
       await playlistsAPI.createPlaylist(name);
       const res = await playlistsAPI.getPlaylists();
-      const pls = (res as any).results || (Array.isArray(res) ? res : []);
-      setPlaylists(pls);
+      const pls = ((res as any).results || (Array.isArray(res) ? res : [])).map(adaptPlaylist);
+      setPlaylists(pls.filter((p: Playlist) => p.ownerId === String(currentUser.id)));
       setName('');
       setBackendOffline(false);
     } catch {
@@ -129,7 +129,7 @@ export default function PlaylistsPage() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {playlists.map(pl => {
-            const plTracks = allTracks.filter(tItem => pl.trackIds.includes(tItem.id));
+            const plTracks = allTracks.filter(tItem => (pl.trackIds || []).includes(tItem.id));
             return (
               <div key={pl.id} className="p-5 bg-neutral-900 border border-neutral-800 rounded-xl shadow-md flex flex-col justify-between">
                 <div>

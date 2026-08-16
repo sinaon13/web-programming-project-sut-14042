@@ -25,6 +25,7 @@ function SettingsContent() {
   const [planIds, setPlanIds] = useState<Record<string, number>>({});
   const [backendOffline, setBackendOffline] = useState(false);
   const [paymentProcessing, setPaymentProcessing] = useState(false);
+  const [selectedDuration, setSelectedDuration] = useState<Record<string, number>>({ SILVER: 1, GOLD: 1 });
   const [paymentResult, setPaymentResult] = useState<string | null>(null);
   
   const [notifNewReleases, setNotifNewReleases] = useState(true);
@@ -97,7 +98,8 @@ function SettingsContent() {
     }
     try {
       setPaymentProcessing(true);
-      const res = await subscriptionsAPI.purchase(planId);
+      const months = selectedDuration[tier] || 1;
+      const res = await subscriptionsAPI.purchase(planId, months);
       const paymentUrl = (res as any).payment_url;
       if (paymentUrl) {
         // Redirect user to Zarinpal sandbox payment page
@@ -166,7 +168,17 @@ function SettingsContent() {
         <div className="grid grid-cols-2 gap-4">
           <div className="p-5 border border-neutral-700 rounded-xl text-center bg-black/40">
             <h4 className="font-bold text-sm text-white">{t.silverPlan}</h4>
-            <p className="text-xs text-neutral-400 my-2 font-mono">{prices.SILVER.toLocaleString()} IRR / month</p>
+            <p className="text-xs text-neutral-400 mt-2 font-mono">{prices.SILVER.toLocaleString()} IRR / month</p>
+            <select
+              value={selectedDuration.SILVER}
+              onChange={e => setSelectedDuration({ ...selectedDuration, SILVER: parseInt(e.target.value) })}
+              className="w-full mt-2 mb-3 p-2 bg-neutral-800 border border-neutral-700 rounded text-xs text-white"
+            >
+              <option value={1}>1 Month ({(prices.SILVER * 1).toLocaleString()} IRR)</option>
+              <option value={3}>3 Months ({(prices.SILVER * 3).toLocaleString()} IRR)</option>
+              <option value={6}>6 Months ({(prices.SILVER * 6).toLocaleString()} IRR)</option>
+              <option value={12}>12 Months ({(prices.SILVER * 12).toLocaleString()} IRR)</option>
+            </select>
             <button
               onClick={() => handlePurchase('SILVER')}
               disabled={paymentProcessing}
@@ -177,7 +189,17 @@ function SettingsContent() {
           </div>
           <div className="p-5 border border-amber-500/50 bg-amber-500/5 rounded-xl text-center shadow-lg">
             <h4 className="font-bold text-sm text-amber-400">{t.goldPlan}</h4>
-            <p className="text-xs text-neutral-400 my-2 font-mono">{prices.GOLD.toLocaleString()} IRR / month</p>
+            <p className="text-xs text-neutral-400 mt-2 font-mono">{prices.GOLD.toLocaleString()} IRR / month</p>
+            <select
+              value={selectedDuration.GOLD}
+              onChange={e => setSelectedDuration({ ...selectedDuration, GOLD: parseInt(e.target.value) })}
+              className="w-full mt-2 mb-3 p-2 bg-neutral-800 border border-neutral-700 rounded text-xs text-white"
+            >
+              <option value={1}>1 Month ({(prices.GOLD * 1).toLocaleString()} IRR)</option>
+              <option value={3}>3 Months ({(prices.GOLD * 3).toLocaleString()} IRR)</option>
+              <option value={6}>6 Months ({(prices.GOLD * 6).toLocaleString()} IRR)</option>
+              <option value={12}>12 Months ({(prices.GOLD * 12).toLocaleString()} IRR)</option>
+            </select>
             <button
               onClick={() => handlePurchase('GOLD')}
               disabled={paymentProcessing}

@@ -68,8 +68,10 @@ export function adaptPlaylist(raw: any): Playlist {
   let trackIds: string[] = [];
   if (Array.isArray(raw.playlist_tracks)) {
     trackIds = raw.playlist_tracks.map((pt: any) => String(pt.track));
+  } else if (Array.isArray(raw.track_ids)) {
+    trackIds = raw.track_ids.map(String);
   } else if (Array.isArray(raw.trackIds)) {
-    trackIds = raw.trackIds;
+    trackIds = raw.trackIds.map(String);
   }
 
   return {
@@ -86,7 +88,7 @@ export function adaptPlaylist(raw: any): Playlist {
 
 export function adaptTicket(raw: any): Ticket {
   const messages = (raw.messages || []).map((m: any) => ({
-    sender: m.sender_name || m.sender || 'User',
+    sender: m.sender_role === 'ADMIN' || m.sender_role === 'SUPPORT' ? 'Support / Admin' : (m.sender_display || m.sender_name || m.sender || 'User'),
     text: m.body || m.text || '',
     time: m.created_at || m.time || '',
   }));
@@ -133,6 +135,7 @@ export function adaptPublicUser(raw: any): User {
     avatar: raw.avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150',
     followersCount: raw.followers_count || raw.followersCount || 0,
     followingCount: raw.following_count || raw.followingCount || 0,
+    isFollowing: raw.is_following ?? raw.isFollowing ?? false,
     dailyStreams: raw.dailyStreams || 0,
     birthDate: raw.birth_date || raw.birthDate,
     gender: raw.gender,
@@ -140,5 +143,9 @@ export function adaptPublicUser(raw: any): User {
     rejectionReason: raw.rejection_reason || raw.rejectionReason,
     portfolioUrl: raw.portfolio_url || raw.portfolioUrl,
     bio: raw.bio,
+    subscriptionExpiresAt: raw.subscription_expires_at || raw.subscriptionExpiresAt,
+    subscriptionDaysLeft: raw.subscription_days_left ?? raw.subscriptionDaysLeft,
+    isMonetized: raw.is_monetized || raw.isMonetized,
+    totalEarnings: raw.total_earnings || raw.totalEarnings ? parseFloat(raw.total_earnings || raw.totalEarnings) : 0,
   };
 }

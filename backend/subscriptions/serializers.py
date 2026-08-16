@@ -36,6 +36,7 @@ class PurchaseSerializer(serializers.Serializer):
     """Serializer for initiating a subscription purchase."""
 
     plan_id = serializers.IntegerField()
+    months = serializers.ChoiceField(choices=[1, 3, 6, 12], default=1)
 
 
 class VerifyPaymentSerializer(serializers.Serializer):

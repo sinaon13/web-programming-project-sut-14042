@@ -112,6 +112,8 @@ class AdminPayoutView(APIView):
                 artist_id=F('track__artist__id'),
                 artist_name=F('track__artist__display_name'),
                 artist_email=F('track__artist__email'),
+                is_monetized=F('track__artist__is_monetized'),
+                streams_settled=F('track__artist__streams_settled'),
             )
             .annotate(
                 stream_count=Count('id'),
@@ -122,13 +124,16 @@ class AdminPayoutView(APIView):
         # Calculate payout amounts
         results = []
         for entry in artist_payouts:
-            payout_amount = Decimal(entry['stream_count']) * PAYOUT_RATE_PER_STREAM
+            unpaid_streams = max(0, entry['stream_count'] - entry['streams_settled'])
+            payout_amount = Decimal(unpaid_streams) * Decimal('200')
             results.append({
                 'artist_id': entry['artist_id'],
                 'artist_name': entry['artist_name'] or 'Unknown',
                 'artist_email': entry['artist_email'],
                 'stream_count': entry['stream_count'],
+                'unpaid_streams': unpaid_streams,
                 'payout_amount': str(payout_amount),
+                'is_monetized': entry['is_monetized'],
             })
 
         total_payout = sum(Decimal(r['payout_amount']) for r in results)
@@ -136,34 +141,35 @@ class AdminPayoutView(APIView):
         return Response({
             'payouts': results,
             'total_payout': str(total_payout),
-            'payout_rate_per_stream': str(PAYOUT_RATE_PER_STREAM),
+            'payout_rate_per_stream': '200',
         })
 
     def post(self, request):
-        """Settle payouts — in sandbox, just return a confirmation."""
+        """Toggle monetization status for artists."""
         artist_ids = request.data.get('artist_ids', [])
         if not artist_ids:
             return Response({'detail': 'No artists specified.'}, status=400)
 
-        # In production: trigger bank transfers, create payout records, etc.
-        # For sandbox: just create notifications
         try:
             from notifications.models import Notification
             for artist_id in artist_ids:
                 artist = User.objects.filter(pk=artist_id, role='ARTIST').first()
                 if artist:
+                    artist.is_monetized = not artist.is_monetized
+                    artist.save(update_fields=['is_monetized'])
+                    
+                    status_text = 'monetized' if artist.is_monetized else 'revoked'
+                    msg = 'Admin has confirmed your monetization.' if artist.is_monetized else 'Admin has revoked your monetization.'
+                    
                     Notification.objects.create(
                         recipient=artist,
-                        title='Payout Settled',
-                        message='Your payout has been processed. Funds will be transferred shortly.',
-                        notification_type=Notification.Type.PAYOUT,
+                        title=f'Monetization {status_text.capitalize()}',
+                        message=msg,
+                        notification_type=Notification.Type.SYSTEM,
                     )
+            return Response({'detail': 'Monetization statuses updated successfully.'})
         except ImportError:
-            pass
-
-        return Response({
-            'detail': f'Payout settlement initiated for {len(artist_ids)} artist(s).',
-        })
+            return Response({'detail': 'Notification system not available.'}, status=500)
 
 
 class ArtistStatsView(APIView):

@@ -33,6 +33,10 @@ function adaptDjangoUser(user: any): User {
     portfolioUrl: user.portfolio_url || user.portfolioUrl,
     bio: user.bio,
     rejectionReason: user.rejection_reason || user.rejectionReason,
+    subscriptionExpiresAt: user.subscription_expires_at || user.subscriptionExpiresAt,
+    subscriptionDaysLeft: user.subscription_days_left ?? user.subscriptionDaysLeft,
+    isMonetized: user.is_monetized || user.isMonetized,
+    totalEarnings: user.total_earnings || user.totalEarnings ? parseFloat(user.total_earnings || user.totalEarnings) : 0,
   };
 }
 

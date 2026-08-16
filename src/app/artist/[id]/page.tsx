@@ -28,7 +28,9 @@ export default function ArtistProfilePage() {
     const load = async () => {
       try {
         const u = await authAPI.getPublicUser(id as string);
-        setArtist(adaptPublicUser(u));
+        const parsedUser = adaptPublicUser(u);
+        setArtist(parsedUser);
+        setFollowing(parsedUser.isFollowing || false);
         
         const trRes = await musicAPI.getTracks({ artist: id as string });
         const trks = (trRes as any).results || (Array.isArray(trRes) ? trRes : []);
@@ -45,6 +47,21 @@ export default function ArtistProfilePage() {
     };
     load();
   }, [id]);
+
+  const handleFollowToggle = async () => {
+    if (!artist) return;
+    try {
+      if (following) {
+        await authAPI.unfollowUser(artist.id);
+        setFollowing(false);
+      } else {
+        await authAPI.followUser(artist.id);
+        setFollowing(true);
+      }
+    } catch {
+      alert('Failed to update follow status.');
+    }
+  };
 
   if (!artist) return <div className="text-center py-16 text-neutral-400">Artist profile not found.</div>;
 
@@ -63,10 +80,10 @@ export default function ArtistProfilePage() {
                 </span>
               )}
             </h1>
-            <p className="text-xs text-neutral-400 mt-1.5">{artist.followersCount + (following ? 1 : 0)} Followers</p>
+            <p className="text-xs text-neutral-400 mt-1.5">{artist.followersCount + (following && !artist.isFollowing ? 1 : (!following && artist.isFollowing ? -1 : 0))} Followers</p>
           </div>
         </div>
-        <button onClick={() => setFollowing(!following)} className={`px-6 py-2.5 rounded-full font-bold text-xs transition shadow flex-shrink-0 ${following ? 'bg-neutral-800 text-white border border-neutral-600' : 'bg-green-500 text-black hover:bg-green-400'}`}>
+        <button onClick={handleFollowToggle} className={`px-6 py-2.5 rounded-full font-bold text-xs transition shadow flex-shrink-0 ${following ? 'bg-neutral-800 text-white border border-neutral-600' : 'bg-green-500 text-black hover:bg-green-400'}`}>
           {following ? t.followingArtist : t.followArtist}
         </button>
       </div>

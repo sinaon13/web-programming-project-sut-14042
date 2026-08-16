@@ -7,9 +7,14 @@ export interface User {
   name: string;
   role: Role;
   tier: Tier;
+  subscriptionExpiresAt?: string;
+  subscriptionDaysLeft?: number;
+  isMonetized?: boolean;
+  totalEarnings?: number;
   avatar: string;
   followersCount: number;
   followingCount: number;
+  isFollowing?: boolean;
   dailyStreams: number;
   birthDate?: string;
   gender?: 'MALE' | 'FEMALE' | 'OTHER';

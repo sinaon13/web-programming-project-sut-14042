@@ -86,6 +86,7 @@ export async function apiCall<T = any>(
   }
 
   const response = await fetch(`${BASE_URL}${endpoint}`, {
+    cache: 'no-store',
     ...options,
     headers,
   });
@@ -418,10 +419,10 @@ export const subscriptionsAPI = {
     return apiCall('/subscriptions/me/');
   },
 
-  purchase: async (planId: number) => {
+  purchase: async (planId: number, months: number = 1) => {
     return apiCall('/subscriptions/purchase/', {
       method: 'POST',
-      body: JSON.stringify({ plan_id: planId }),
+      body: JSON.stringify({ plan_id: planId, months }),
     });
   },
 
@@ -434,6 +435,13 @@ export const subscriptionsAPI = {
 
   getTransactions: async () => {
     return apiCall('/subscriptions/transactions/');
+  },
+
+  advanceTime: async (days: number) => {
+    return apiCall('/subscriptions/advance-time/', {
+      method: 'POST',
+      body: JSON.stringify({ days }),
+    });
   },
 };
 
