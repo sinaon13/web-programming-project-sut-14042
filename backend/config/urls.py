@@ -31,6 +31,11 @@ urlpatterns = [
     path('api/reports/', include('reports.urls')),
 ]
 
-# Serve media files in development
+from django.urls import re_path
+from .media_serve import serve_media_with_range
+
+# Serve media files in development with HTTP Range support
 if settings.DEBUG:
-    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+    urlpatterns += [
+        re_path(r'^media/(?P<path>.*)$', serve_media_with_range),
+    ]
