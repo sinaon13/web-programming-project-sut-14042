@@ -39,7 +39,7 @@ export default function ProfilePage() {
         <div className="flex items-center space-x-6">
           <div className="relative">
             <img src={currentUser.avatar} className="w-24 h-24 rounded-full object-cover border-2 border-green-500 shadow-md" />
-            <input type="file" accept="image/*" ref={fileInputRef} onChange={handleAvatarChange} className="hidden" />
+            <input type="file" ref={fileInputRef} onChange={handleAvatarChange} className="hidden" />
             <button onClick={() => fileInputRef.current?.click()} className="absolute bottom-0 right-0 bg-neutral-800 border border-neutral-600 text-[10px] px-2 py-0.5 rounded-full hover:bg-neutral-700">Edit</button>
           </div>
           <div>

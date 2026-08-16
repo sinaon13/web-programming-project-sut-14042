@@ -53,7 +53,7 @@ export default function AlbumDetailPage() {
           <div className="flex items-center gap-3 text-xs text-neutral-400 pt-2">
             <span>📅 {album.releaseDate}</span>
             <span>•</span>
-            <span>🎵 {tracks.length} tracks</span>
+            <span>🎵 {album.trackCount || 0} tracks</span>
             {album.genre && <><span>•</span><span className="bg-neutral-800 px-2 py-0.5 rounded text-neutral-300">{album.genre}</span></>}
           </div>
         </div>
@@ -80,7 +80,7 @@ export default function AlbumDetailPage() {
                   {(track.totalStreams || track.listenersCount * 2).toLocaleString()} {t.streams}
                 </span>
               )}
-              <PlaylistMenu trackId={track.id} />
+              <PlaylistMenu track={track} />
               <DownloadButton track={track} />
               <button onClick={() => playTrack(track, tracks)} className="px-5 py-1.5 bg-green-500 text-black font-bold text-xs rounded-full hover:bg-green-400 transition shadow">
                 {t.play}

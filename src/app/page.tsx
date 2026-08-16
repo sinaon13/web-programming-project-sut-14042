@@ -116,7 +116,7 @@ export default function HomePage() {
                   </div>
                 </div>
                 <div className="flex items-center space-x-2">
-                  <PlaylistMenu trackId={track.id} />
+                  <PlaylistMenu track={track} />
                   <DownloadButton track={track} />
                   <button onClick={() => playTrack(track, tracks)} className="px-4 py-1.5 bg-amber-400 text-black font-bold text-xs rounded-full hover:bg-amber-300 shadow">{t.playVip}</button>
                 </div>
@@ -141,7 +141,7 @@ export default function HomePage() {
                     </Link>
                   </div>
                   <div className="flex items-center space-x-1">
-                    <PlaylistMenu trackId={track.id} />
+                    <PlaylistMenu track={track} />
                     <DownloadButton track={track} />
                   </div>
                 </div>

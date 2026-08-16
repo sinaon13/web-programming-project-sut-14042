@@ -125,6 +125,14 @@ class UserProfileSerializer(serializers.ModelSerializer):
         return 0
 
     def validate_avatar(self, value):
+        import os
+        ALLOWED_IMAGE_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.webp']
+        
+        if value:
+            ext = os.path.splitext(value.name)[1].lower()
+            if ext not in ALLOWED_IMAGE_EXTENSIONS:
+                raise serializers.ValidationError(f'Unsupported image format "{ext}". Allowed: {", ".join(ALLOWED_IMAGE_EXTENSIONS)}')
+
         user = self.context['request'].user
         tier = 'BASIC'
         if hasattr(user, 'subscription'):
@@ -145,12 +153,15 @@ class PublicUserSerializer(serializers.ModelSerializer):
     followers_count = serializers.SerializerMethodField()
     is_following = serializers.SerializerMethodField()
     subscription_days_left = serializers.SerializerMethodField()
+    total_streams = serializers.SerializerMethodField()
+    tracks_count = serializers.SerializerMethodField()
 
     class Meta:
         model = User
         fields = [
             'id', 'username', 'display_name', 'role', 'avatar',
             'bio', 'is_verified', 'followers_count', 'is_following', 'subscription_days_left',
+            'total_streams', 'tracks_count'
         ]
 
     def get_followers_count(self, obj):
@@ -170,6 +181,17 @@ class PublicUserSerializer(serializers.ModelSerializer):
             delta = sub.expires_at - get_current_time()
             return max(0, delta.days)
         return 0
+
+    def get_total_streams(self, obj):
+        from django.db.models import Sum
+        # Calculate total listeners directly from the DB
+        agg = obj.tracks.aggregate(
+            total=Sum('total_streams')
+        )
+        return agg['total'] or 0
+
+    def get_tracks_count(self, obj):
+        return obj.tracks.count()
 
 
 class UserPreferencesSerializer(serializers.ModelSerializer):

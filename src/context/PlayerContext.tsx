@@ -14,13 +14,13 @@ interface PlayerContextType {
   volume: number;
   repeatMode: RepeatMode;
   isShuffle: boolean;
-  queue: Track[];
-  playlist: Track[];
-  // Advanced player features (bonus)
+  queue: Track[]; // Exposed to UI (explicitQueue + contextQueue)
+  playlist: Track[]; // Deprecated semantic name, mapped to contextList
   audioQuality: AudioQuality;
   crossfadeEnabled: boolean;
   accentColor: string;
   playTrack: (track: Track, list?: Track[]) => void;
+  addToQueue: (track: Track) => void;
   togglePlay: () => void;
   nextTrack: () => void;
   prevTrack: () => void;
@@ -35,10 +35,6 @@ interface PlayerContextType {
 
 const PlayerContext = createContext<PlayerContextType | null>(null);
 
-/**
- * Extract a dominant color from an image URL using a canvas.
- * Returns an HSL string for use as an accent color.
- */
 function extractDominantColor(imageUrl: string): Promise<string> {
   return new Promise((resolve) => {
     const img = new Image();
@@ -54,7 +50,6 @@ function extractDominantColor(imageUrl: string): Promise<string> {
         const data = ctx.getImageData(0, 0, 8, 8).data;
         let r = 0, g = 0, b = 0, count = 0;
         for (let i = 0; i < data.length; i += 4) {
-          // Skip near-black and near-white pixels
           if (data[i] + data[i+1] + data[i+2] < 60) continue;
           if (data[i] + data[i+1] + data[i+2] > 700) continue;
           r += data[i]; g += data[i+1]; b += data[i+2]; count++;
@@ -63,7 +58,6 @@ function extractDominantColor(imageUrl: string): Promise<string> {
         r = Math.round(r / count);
         g = Math.round(g / count);
         b = Math.round(b / count);
-        // Boost saturation for a more vibrant accent
         const max = Math.max(r, g, b), min = Math.min(r, g, b);
         const l = (max + min) / 510;
         let s = 0, h = 0;
@@ -84,6 +78,15 @@ function extractDominantColor(imageUrl: string): Promise<string> {
   });
 }
 
+function shuffleArray<T>(array: T[]): T[] {
+  const newArr = [...array];
+  for (let i = newArr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [newArr[i], newArr[j]] = [newArr[j], newArr[i]];
+  }
+  return newArr;
+}
+
 export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [currentTrack, setCurrentTrack] = useState<Track | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -92,9 +95,13 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [volume, setVolumeState] = useState(0.8);
   const [repeatMode, setRepeatMode] = useState<RepeatMode>('OFF');
   const [isShuffle, setIsShuffle] = useState(false);
-  const [playlist, setPlaylist] = useState<Track[]>([]);
-  const [queue, setQueue] = useState<Track[]>([]);
-  // Advanced player state
+  
+  // Spotify Queue Logic
+  const [contextList, setContextList] = useState<Track[]>([]);
+  const [contextQueue, setContextQueue] = useState<Track[]>([]);
+  const [explicitQueue, setExplicitQueue] = useState<Track[]>([]);
+  const [history, setHistory] = useState<Track[]>([]);
+
   const [audioQuality, setAudioQualityState] = useState<AudioQuality>('HIGH');
   const [crossfadeEnabled, setCrossfadeEnabled] = useState(false);
   const [accentColor, setAccentColor] = useState('#22c55e');
@@ -102,6 +109,13 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const crossfadeAudioRef = useRef<HTMLAudioElement | null>(null);
   const crossfadeIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Helper to get correct audio URL
+  const getAudioUrl = useCallback((track: Track | null, quality: AudioQuality): string => {
+    if (!track) return '';
+    // @ts-ignore
+    return (quality === 'LOW' && track.audioUrl128) ? track.audioUrl128 : (track.audioUrl || 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3');
+  }, []);
 
   useEffect(() => {
     audioRef.current = new Audio();
@@ -140,7 +154,6 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     };
   }, []);
 
-  // Crossfade: monitor time remaining and start fading when < 5 seconds left
   useEffect(() => {
     if (!crossfadeEnabled || !audioRef.current) return;
 
@@ -149,29 +162,29 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       const timeLeft = (audioRef.current.duration || 0) - audioRef.current.currentTime;
 
       if (timeLeft > 0 && timeLeft <= 5 && !crossfadeIntervalRef.current) {
-        // Find the next track
-        const currentIdx = playlist.findIndex(t => t.id === currentTrack.id);
-        let nextIdx = -1;
-        if (isShuffle) {
-          nextIdx = Math.floor(Math.random() * playlist.length);
-        } else if (currentIdx < playlist.length - 1) {
-          nextIdx = currentIdx + 1;
-        } else if (repeatMode === 'PLAYLIST') {
-          nextIdx = 0;
+        
+        // Find next track for crossfade
+        let nextT: Track | null = null;
+        if (repeatMode === 'TRACK') {
+          nextT = currentTrack; // Crossfade into itself!
+        } else if (explicitQueue.length > 0) {
+          nextT = explicitQueue[0];
+        } else if (contextQueue.length > 0) {
+          nextT = contextQueue[0];
+        } else if (repeatMode === 'PLAYLIST' && contextList.length > 0) {
+          nextT = isShuffle ? shuffleArray(contextList)[0] : contextList[0];
         }
 
-        if (nextIdx >= 0 && crossfadeAudioRef.current) {
-          const nextT = playlist[nextIdx];
-          crossfadeAudioRef.current.src = nextT.audioUrl || 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3';
+        if (nextT && crossfadeAudioRef.current) {
+          crossfadeAudioRef.current.src = getAudioUrl(nextT, audioQuality);
           crossfadeAudioRef.current.volume = 0;
           crossfadeAudioRef.current.play().catch(() => {});
 
-          // 5-second crossfade with exactly 5 steps (100, 80, 60, 40, 20, 0)
           const fadeSteps = 5;
           let step = 0;
           crossfadeIntervalRef.current = setInterval(() => {
             step++;
-            const ratio = step / fadeSteps; // 0.2, 0.4, 0.6, 0.8, 1.0
+            const ratio = step / fadeSteps;
             if (audioRef.current) audioRef.current.volume = Math.max(0, volume * (1 - ratio));
             if (crossfadeAudioRef.current) crossfadeAudioRef.current.volume = Math.min(volume, volume * ratio);
             
@@ -179,14 +192,14 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
               if (crossfadeIntervalRef.current) clearInterval(crossfadeIntervalRef.current);
               crossfadeIntervalRef.current = null;
             }
-          }, 1000); // Trigger every 1 second
+          }, 1000);
         }
       }
     };
 
     const interval = setInterval(checkCrossfade, 500);
     return () => clearInterval(interval);
-  }, [crossfadeEnabled, currentTrack, playlist, isShuffle, repeatMode, volume]);
+  }, [crossfadeEnabled, currentTrack, explicitQueue, contextQueue, contextList, isShuffle, repeatMode, volume, audioQuality, getAudioUrl]);
 
   const setVolume = (vol: number) => {
     setVolumeState(vol);
@@ -195,13 +208,9 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   const setAudioQuality = (q: AudioQuality) => {
     setAudioQualityState(q);
-    // In a real app, this would switch the audio source URL to a different bitrate version.
-    // Since we don't have separate files, we simulate the change by briefly pausing/resuming
-    // to indicate the quality has changed. The UI will reflect the selection immediately.
     if (audioRef.current && currentTrack) {
       const currentTime = audioRef.current.currentTime;
-      // Re-set the source (in production this would be a different URL per quality)
-      audioRef.current.src = currentTrack.audioUrl || 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3';
+      audioRef.current.src = getAudioUrl(currentTrack, q);
       audioRef.current.currentTime = currentTime;
       if (isPlaying) audioRef.current.play().catch(() => {});
     }
@@ -209,7 +218,6 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   const toggleCrossfade = () => {
     setCrossfadeEnabled(prev => !prev);
-    // Clean up any active crossfade
     if (crossfadeIntervalRef.current) {
       clearInterval(crossfadeIntervalRef.current);
       crossfadeIntervalRef.current = null;
@@ -236,33 +244,14 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     setCurrentTrack(null);
     setProgress(0);
     setDuration(0);
-    setPlaylist([]);
-    setQueue([]);
+    setContextList([]);
+    setContextQueue([]);
+    setExplicitQueue([]);
+    setHistory([]);
     setAccentColor('#22c55e');
   };
 
-  // ROBUST PLAY TRACK & QUEUE SYNC ENGINE
-  const playTrack = useCallback((track: Track, list: Track[] = []) => {
-    let activePlaylist = playlist;
-    if (list.length > 0) {
-      activePlaylist = list;
-      setPlaylist(list);
-    }
-
-    // Find index in activePlaylist
-    const idx = activePlaylist.findIndex(t => t.id === track.id);
-    if (idx !== -1) {
-      setQueue(activePlaylist.slice(idx + 1));
-    } else {
-      const qIdx = queue.findIndex(t => t.id === track.id);
-      if (qIdx !== -1) {
-        setQueue(queue.slice(qIdx + 1));
-      } else {
-        setQueue([]);
-      }
-    }
-
-    // If crossfade was active, swap the incoming audio to primary
+  const _playNewTrack = useCallback((track: Track) => {
     if (crossfadeEnabled && crossfadeAudioRef.current && crossfadeAudioRef.current.src && !crossfadeAudioRef.current.paused) {
       if (audioRef.current) {
         audioRef.current.pause();
@@ -274,7 +263,7 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       crossfadeAudioRef.current.pause();
       crossfadeAudioRef.current.volume = 0;
     } else if (audioRef.current) {
-      audioRef.current.src = track.audioUrl || 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3';
+      audioRef.current.src = getAudioUrl(track, audioQuality);
       audioRef.current.volume = volume;
       audioRef.current.play().catch(() => setIsPlaying(false));
     }
@@ -287,18 +276,47 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     setCurrentTrack(track);
     setIsPlaying(true);
 
-    // Extract accent color from cover art
     if (track.coverUrl) {
       extractDominantColor(track.coverUrl).then(setAccentColor).catch(() => setAccentColor('#22c55e'));
     }
 
-    // 1. Send Stream Log to Django Backend (enforces daily stream limits & increments denormalized counters)
     musicAPI.streamTrack(track.id).catch(err => {
       console.warn('Failed to log stream:', err.message);
     });
-  }, [playlist, queue, crossfadeEnabled, volume]);
+  }, [crossfadeEnabled, volume, audioQuality, getAudioUrl]);
 
-  const togglePlay = () => {
+  const playTrack = useCallback((track: Track, list: Track[] = []) => {
+    let newContextList = contextList;
+    if (list.length > 0) {
+      newContextList = list;
+      setContextList(list);
+    }
+    
+    // Clear explicit queue when user forces a new context/track directly
+    setExplicitQueue([]);
+
+    if (currentTrack) {
+      setHistory(prev => [...prev, currentTrack].slice(-50));
+    }
+
+    // Determine upcoming context queue
+    const trackIndex = newContextList.findIndex(t => t.id === track.id);
+    let remainingTracks = trackIndex !== -1 ? newContextList.slice(trackIndex + 1) : [];
+
+    if (isShuffle) {
+      setContextQueue(shuffleArray(remainingTracks));
+    } else {
+      setContextQueue(remainingTracks);
+    }
+
+    _playNewTrack(track);
+  }, [contextList, currentTrack, isShuffle, _playNewTrack]);
+
+  const addToQueue = useCallback((track: Track) => {
+    setExplicitQueue(prev => [...prev, track]);
+  }, []);
+
+  const togglePlay = useCallback(() => {
     if (!currentTrack || !audioRef.current) return;
     if (isPlaying) {
       audioRef.current.pause();
@@ -306,55 +324,77 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     } else {
       audioRef.current.play().then(() => setIsPlaying(true)).catch(() => setIsPlaying(false));
     }
-  };
+  }, [currentTrack, isPlaying]);
 
-  const seek = (time: number) => {
+  const seek = useCallback((time: number) => {
     if (audioRef.current) {
       audioRef.current.currentTime = time;
       setProgress(time);
     }
-  };
+  }, []);
 
-  const toggleRepeat = () => {
+  const toggleRepeat = useCallback(() => {
     const modes: RepeatMode[] = ['OFF', 'PLAYLIST', 'TRACK'];
-    const nextIdx = (modes.indexOf(repeatMode) + 1) % modes.length;
-    setRepeatMode(modes[nextIdx]);
-  };
+    setRepeatMode(prev => modes[(modes.indexOf(prev) + 1) % modes.length]);
+  }, []);
 
-  const toggleShuffle = () => {
-    setIsShuffle(!isShuffle);
-  };
+  const toggleShuffle = useCallback(() => {
+    setIsShuffle(prevShuffle => {
+      const newShuffle = !prevShuffle;
+      if (newShuffle) {
+        setContextQueue(prevQueue => shuffleArray(prevQueue));
+      } else {
+        // Restore original order based on contextList, starting after currentTrack
+        if (currentTrack) {
+          const trackIndex = contextList.findIndex(t => t.id === currentTrack.id);
+          setContextQueue(trackIndex !== -1 ? contextList.slice(trackIndex + 1) : []);
+        }
+      }
+      return newShuffle;
+    });
+  }, [currentTrack, contextList]);
 
-  const nextTrack = () => {
-    if (!currentTrack || playlist.length === 0) return;
+  const nextTrack = useCallback((forceNext = true) => {
+    if (!currentTrack) return;
 
-    if (repeatMode === 'TRACK') {
+    if (!forceNext && repeatMode === 'TRACK') {
       seek(0);
       if (audioRef.current) audioRef.current.play();
       return;
     }
 
-    if (isShuffle) {
-      const randomIdx = Math.floor(Math.random() * playlist.length);
-      playTrack(playlist[randomIdx], playlist);
-      return;
+    let nextT: Track | null = null;
+    let newExplicitQueue = [...explicitQueue];
+    let newContextQueue = [...contextQueue];
+
+    if (newExplicitQueue.length > 0) {
+      nextT = newExplicitQueue.shift()!;
+      setExplicitQueue(newExplicitQueue);
+    } else if (newContextQueue.length > 0) {
+      nextT = newContextQueue.shift()!;
+      setContextQueue(newContextQueue);
+    } else if (repeatMode === 'PLAYLIST' && contextList.length > 0) {
+      const list = isShuffle ? shuffleArray(contextList) : [...contextList];
+      nextT = list.shift()!;
+      setContextQueue(list);
     }
 
-    const currentIdx = playlist.findIndex(t => t.id === currentTrack.id);
-    if (currentIdx < playlist.length - 1) {
-      playTrack(playlist[currentIdx + 1], playlist);
-    } else if (repeatMode === 'PLAYLIST') {
-      playTrack(playlist[0], playlist);
+    if (nextT) {
+      setHistory(prev => [...prev, currentTrack].slice(-50));
+      _playNewTrack(nextT);
     } else {
       setIsPlaying(false);
-      if (audioRef.current) audioRef.current.pause();
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.currentTime = 0;
+      }
     }
-  };
+  }, [currentTrack, repeatMode, explicitQueue, contextQueue, contextList, isShuffle, seek, _playNewTrack]);
 
-  const prevTrack = () => {
+  const prevTrack = useCallback(() => {
     if (!currentTrack || !audioRef.current) return;
 
-    if (audioRef.current.currentTime > 3) {
+    if (audioRef.current.currentTime > 3 || history.length === 0) {
       audioRef.current.currentTime = 0;
       setProgress(0);
       if (!isPlaying) {
@@ -363,17 +403,18 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       return;
     }
 
-    if (playlist.length === 0) return;
+    const newHistory = [...history];
+    const previousSong = newHistory.pop()!;
+    setHistory(newHistory);
+    
+    // Push current back to queue so we don't lose it
+    setContextQueue(prev => [currentTrack, ...prev]);
 
-    const currentIdx = playlist.findIndex(t => t.id === currentTrack.id);
-    const prevIdx = currentIdx <= 0 ? playlist.length - 1 : currentIdx - 1;
-    const previousSong = playlist[prevIdx];
-
-    playTrack(previousSong, playlist);
-  };
+    _playNewTrack(previousSong);
+  }, [currentTrack, history, isPlaying, _playNewTrack]);
 
   const handleTrackEnd = useCallback(() => {
-    nextTrack();
+    nextTrack(false); // natural end
   }, [nextTrack]);
 
   useEffect(() => {
@@ -381,6 +422,10 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       audioRef.current.onended = handleTrackEnd;
     }
   }, [handleTrackEnd]);
+
+  // Expose combined queue for UI
+  const queue = [...explicitQueue, ...contextQueue];
+  const playlist = contextList; // For backwards compatibility
 
   return (
     <PlayerContext.Provider value={{
@@ -397,6 +442,7 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       crossfadeEnabled,
       accentColor,
       playTrack,
+      addToQueue,
       togglePlay,
       nextTrack,
       prevTrack,

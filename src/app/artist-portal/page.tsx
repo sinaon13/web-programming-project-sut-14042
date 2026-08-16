@@ -218,7 +218,7 @@ export default function ArtistPortalPage() {
 
           <div>
             <label className="block text-xs font-semibold text-neutral-400 mb-1">Audio File</label>
-            <input type="file" accept="audio/*" onChange={e => setAudioFile(e.target.files?.[0] || null)} className="w-full p-1.5 bg-neutral-800 border border-neutral-700 rounded text-sm text-white" />
+            <input type="file" onChange={e => setAudioFile(e.target.files?.[0] || null)} className="w-full p-1.5 bg-neutral-800 border border-neutral-700 rounded text-sm text-white" />
             {editingTrackId && <p className="text-[10px] text-neutral-500 mt-1">Leave empty to keep current audio file.</p>}
           </div>
 
@@ -246,7 +246,7 @@ export default function ArtistPortalPage() {
             )}
             <div className={releaseType === 'SINGLE' ? 'md:col-span-2' : ''}>
               <label className="block text-xs font-semibold text-neutral-400 mb-1">{t.coverUrlLabel} (Image File)</label>
-              <input type="file" accept="image/*" onChange={e => setCoverFile(e.target.files?.[0] || null)} className="w-full p-1.5 bg-neutral-800 border border-neutral-700 rounded text-sm text-white" />
+              <input type="file" onChange={e => setCoverFile(e.target.files?.[0] || null)} className="w-full p-1.5 bg-neutral-800 border border-neutral-700 rounded text-sm text-white" />
               {editingTrackId && <p className="text-[10px] text-neutral-500 mt-1">Leave empty to keep current cover image.</p>}
             </div>
           </div>

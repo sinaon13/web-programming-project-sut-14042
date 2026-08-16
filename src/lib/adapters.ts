@@ -27,6 +27,9 @@ export function adaptTrack(raw: any): Track {
     audioUrl: (raw.audio_file || raw.audioUrl)
       ? ((raw.audio_file || raw.audioUrl).startsWith('/media/') ? `http://127.0.0.1:8000${raw.audio_file || raw.audioUrl}` : (raw.audio_file || raw.audioUrl))
       : 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3',
+    audioUrl128: (raw.audio_file_128 || raw.audioUrl128)
+      ? ((raw.audio_file_128 || raw.audioUrl128).startsWith('/media/') ? `http://127.0.0.1:8000${raw.audio_file_128 || raw.audioUrl128}` : (raw.audio_file_128 || raw.audioUrl128))
+      : '',
     listenersCount: raw.listeners_count ?? raw.listenersCount ?? 0,
     totalStreams: raw.total_streams ?? raw.totalStreams ?? 0,
     releaseDate: raw.release_date || raw.releaseDate || '',
@@ -56,6 +59,7 @@ export function adaptAlbum(raw: any): Album {
       : 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=300',
     releaseDate: raw.release_date || raw.releaseDate || '',
     genre: raw.genre || '',
+    trackCount: raw.track_count || raw.trackCount || 0,
   };
 }
 
@@ -137,6 +141,8 @@ export function adaptPublicUser(raw: any): User {
     followingCount: raw.following_count || raw.followingCount || 0,
     isFollowing: raw.is_following ?? raw.isFollowing ?? false,
     dailyStreams: raw.dailyStreams || 0,
+    totalStreams: raw.total_streams || 0,
+    tracksCount: raw.tracks_count || 0,
     birthDate: raw.birth_date || raw.birthDate,
     gender: raw.gender,
     status: raw.artist_status || raw.status,

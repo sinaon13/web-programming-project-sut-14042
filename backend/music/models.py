@@ -38,6 +38,7 @@ class Track(models.Model):
     )
     cover = models.ImageField(upload_to='covers/', blank=True, null=True)
     audio_file = models.FileField(upload_to='tracks/')
+    audio_file_128 = models.FileField(upload_to='tracks_128/', blank=True, null=True)
     release_date = models.DateField()
     release_type = models.CharField(max_length=6, choices=ReleaseType.choices, default=ReleaseType.SINGLE)
     genre = models.CharField(max_length=100, blank=True, default='')

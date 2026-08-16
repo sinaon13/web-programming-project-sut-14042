@@ -55,7 +55,7 @@ describe('Spotify Clone Frontend Test Suite', () => {
       name: 'Test Artist',
       email: 'artist@test.com',
       role: 'ARTIST',
-      status: 'PENDING' as const,
+      status: 'PENDING' as 'PENDING' | 'APPROVED' | 'REJECTED',
       tier: 'BASIC' as const,
       avatar: '',
       followersCount: 0,

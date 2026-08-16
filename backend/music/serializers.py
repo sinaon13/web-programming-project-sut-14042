@@ -1,4 +1,6 @@
 import os
+import subprocess
+from django.core.files import File
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
 from music.models import Album, Track, StreamLog
@@ -6,6 +8,7 @@ from music.models import Album, Track, StreamLog
 User = get_user_model()
 
 ALLOWED_AUDIO_EXTENSIONS = ['.mp3', '.wav', '.flac']
+ALLOWED_IMAGE_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.webp']
 MAX_AUDIO_SIZE_MB = 50
 
 
@@ -41,7 +44,7 @@ class TrackSerializer(serializers.ModelSerializer):
         model = Track
         fields = [
             'id', 'title', 'artist', 'album', 'album_title',
-            'cover', 'audio_file', 'release_date', 'release_type',
+            'cover', 'audio_file', 'audio_file_128', 'release_date', 'release_type',
             'genre', 'lyrics', 'release_year', 'collaborators',
             'file_format', 'is_early_access',
             'listeners_count', 'total_streams',
@@ -99,6 +102,16 @@ class TrackUploadSerializer(serializers.ModelSerializer):
             )
         return value
 
+    def validate_cover(self, value):
+        if not value:
+            return value
+        ext = os.path.splitext(value.name)[1].lower()
+        if ext not in ALLOWED_IMAGE_EXTENSIONS:
+            raise serializers.ValidationError(
+                f'Unsupported image format "{ext}". Allowed: {", ".join(ALLOWED_IMAGE_EXTENSIONS)}'
+            )
+        return value
+
     def _handle_album(self, validated_data, artist):
         album_title = validated_data.pop('album_title', None)
         cover = validated_data.get('cover')
@@ -132,16 +145,42 @@ class TrackUploadSerializer(serializers.ModelSerializer):
             
         return validated_data
 
+    def _transcode_128(self, track):
+        if not track.audio_file:
+            return
+        try:
+            input_path = track.audio_file.path
+            base, ext = os.path.splitext(input_path)
+            output_path = f"{base}_128{ext}"
+            cmd = ['ffmpeg', '-y', '-i', input_path, '-b:a', '32k', '-ar', '22050', output_path]
+            subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            
+            with open(output_path, 'rb') as f:
+                file_name = os.path.basename(output_path)
+                track.audio_file_128.save(file_name, File(f), save=False)
+            track.save(update_fields=['audio_file_128'])
+            
+            if os.path.exists(output_path):
+                os.remove(output_path)
+        except Exception as e:
+            print(f"Failed to transcode {track.id} to 128k: {e}")
+
     def create(self, validated_data):
         artist = self.context['request'].user
         validated_data['artist'] = artist
         validated_data = self._handle_album(validated_data, artist)
-        return super().create(validated_data)
+        track = super().create(validated_data)
+        self._transcode_128(track)
+        return track
 
     def update(self, instance, validated_data):
         artist = instance.artist
         validated_data = self._handle_album(validated_data, artist)
-        return super().update(instance, validated_data)
+        audio_changed = 'audio_file' in validated_data
+        track = super().update(instance, validated_data)
+        if audio_changed:
+            self._transcode_128(track)
+        return track
 
 
 class StreamLogSerializer(serializers.ModelSerializer):

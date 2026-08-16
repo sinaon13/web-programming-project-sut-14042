@@ -23,6 +23,8 @@ export interface User {
   portfolioUrl?: string;
   bio?: string;
   payoutStatus?: 'PENDING' | 'SETTLED';
+  totalStreams?: number;
+  tracksCount?: number;
 }
 
 export interface Track {
@@ -30,17 +32,20 @@ export interface Track {
   title: string;
   artistId: string;
   artistName: string;
+  artistAvatar?: string;
   album: string;
   albumId?: string;
-  coverUrl: string;
-  audioUrl: string;
+  albumTitle?: string;
+  coverUrl?: string;
+  audioUrl?: string;
+  audioUrl128?: string;
   listenersCount: number;
   totalStreams: number;
   releaseDate: string;
+  releaseType: 'SINGLE' | 'ALBUM';
   isEarlyAccess: boolean;
   lyrics?: string;
   genre?: string;
-  releaseType?: 'SINGLE' | 'ALBUM';
   releaseYear?: number;
   collaborators?: string;
   fileFormat?: 'MP3' | 'WAV' | 'FLAC';
@@ -54,6 +59,7 @@ export interface Album {
   coverUrl: string;
   releaseDate: string;
   genre?: string;
+  trackCount?: number;
 }
 
 export interface Playlist {

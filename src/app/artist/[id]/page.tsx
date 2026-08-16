@@ -97,8 +97,8 @@ export default function ArtistProfilePage() {
 
       {currentUser?.tier === 'GOLD' && (
         <div className="p-5 bg-amber-500/10 border border-amber-500/30 rounded-xl flex justify-around text-center shadow">
-          <div><span className="block text-lg font-bold text-amber-400">{artistTracks.reduce((sum, tItem) => sum + tItem.listenersCount, 0).toLocaleString()}</span><span className="text-[10px] text-neutral-400 uppercase">{t.streams}</span></div>
-          <div><span className="block text-lg font-bold text-amber-400">{artistTracks.length}</span><span className="text-[10px] text-neutral-400 uppercase">{t.tracksCount}</span></div>
+          <div><span className="block text-lg font-bold text-amber-400">{(artist.totalStreams || 0).toLocaleString()}</span><span className="text-[10px] text-neutral-400 uppercase">{t.streams}</span></div>
+          <div><span className="block text-lg font-bold text-amber-400">{artist.tracksCount || 0}</span><span className="text-[10px] text-neutral-400 uppercase">{t.tracksCount}</span></div>
         </div>
       )}
 

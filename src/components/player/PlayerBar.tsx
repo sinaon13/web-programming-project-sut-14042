@@ -79,7 +79,7 @@ export const PlayerBar: React.FC = () => {
             </button>
             <button onClick={toggleRepeat} className={`p-1.5 transition rounded-full flex items-center ${repeatMode !== 'OFF' ? 'bg-white/10' : 'text-neutral-400 hover:text-white hover:bg-white/5'}`} style={repeatMode !== 'OFF' ? { color: accentColor } : {}}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="17 1 21 5 17 9"></polyline><path d="M3 11V9a4 4 0 0 1 4-4h14"></path><polyline points="7 23 3 19 7 15"></polyline><path d="M21 13v2a4 4 0 0 1-4 4H3"></path></svg>
-              {repeatMode === 'ONE' && <span className="absolute text-[8px] font-bold mt-0.5" style={{ marginLeft: '6px' }}>1</span>}
+              {repeatMode === 'TRACK' && <span className="absolute text-[8px] font-bold mt-0.5" style={{ marginLeft: '6px' }}>1</span>}
             </button>
             <div className="ml-2 scale-90 opacity-80 hover:opacity-100 transition"><DownloadButton track={currentTrack} /></div>
           </div>
@@ -181,7 +181,7 @@ export const PlayerBar: React.FC = () => {
               </button>
               <button onClick={toggleRepeat} className={`p-3 transition rounded-full flex items-center justify-center relative ${repeatMode !== 'OFF' ? 'bg-white/10' : 'text-neutral-400 hover:text-white hover:bg-white/5'}`} style={repeatMode !== 'OFF' ? { color: accentColor } : {}}>
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="17 1 21 5 17 9"></polyline><path d="M3 11V9a4 4 0 0 1 4-4h14"></path><polyline points="7 23 3 19 7 15"></polyline><path d="M21 13v2a4 4 0 0 1-4 4H3"></path></svg>
-                {repeatMode === 'ONE' && <span className="absolute text-[10px] font-bold" style={{ top: '50%', left: '50%', transform: 'translate(-50%, -50%)' }}>1</span>}
+                {repeatMode === 'TRACK' && <span className="absolute text-[10px] font-bold" style={{ top: '50%', left: '50%', transform: 'translate(-50%, -50%)' }}>1</span>}
               </button>
             </div>
 

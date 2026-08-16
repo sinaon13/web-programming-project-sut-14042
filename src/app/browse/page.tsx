@@ -91,7 +91,7 @@ export default function BrowsePage() {
                   {(track.totalStreams || track.listenersCount * 2).toLocaleString()} {t.streams} • 👤 {track.listenersCount.toLocaleString()} {t.unique}
                 </span>
               )}
-              <PlaylistMenu trackId={track.id} />
+              <PlaylistMenu track={track} />
               <DownloadButton track={track} />
               <button onClick={() => handlePlayAttempt(track, filtered)} className={`px-4 py-1.5 font-bold text-xs rounded-full transition ${track.isEarlyAccess && currentUser?.tier !== 'GOLD' ? 'bg-amber-400 text-black hover:bg-amber-300' : 'bg-white text-black hover:bg-green-400'}`}>
                 {track.isEarlyAccess && currentUser?.tier !== 'GOLD' ? t.unlockVip : t.play}
