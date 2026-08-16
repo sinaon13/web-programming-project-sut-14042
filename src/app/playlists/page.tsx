@@ -20,21 +20,29 @@ export default function PlaylistsPage() {
   const [allTracks, setAllTracks] = useState<Track[]>([]);
   const [backendOffline, setBackendOffline] = useState(false);
 
+  const refreshPlaylists = async () => {
+    try {
+      const plRes = await playlistsAPI.getPlaylists();
+      const pls = ((plRes as any).results || (Array.isArray(plRes) ? plRes : [])).map(adaptPlaylist);
+      setPlaylists(pls.filter((p: Playlist) => p.ownerId === String(currentUser?.id)));
+      setBackendOffline(false);
+    } catch {
+      setBackendOffline(true);
+    }
+  };
+
   useEffect(() => {
     if (!currentUser) return;
     
     const load = async () => {
       try {
-        const plRes = await playlistsAPI.getPlaylists();
         const trRes = await musicAPI.getTracks();
-        const pls = ((plRes as any).results || (Array.isArray(plRes) ? plRes : [])).map(adaptPlaylist);
         const trks = (trRes as any).results || (Array.isArray(trRes) ? trRes : []);
-        setPlaylists(pls.filter((p: Playlist) => p.ownerId === String(currentUser.id)));
         setAllTracks(trks.map(adaptTrack));
-        setBackendOffline(false);
       } catch {
-        setBackendOffline(true);
+        // Track fetch failure shouldn't completely break playlist view
       }
+      await refreshPlaylists();
     };
     load();
   }, [currentUser]);
@@ -49,11 +57,8 @@ export default function PlaylistsPage() {
     
     try {
       await playlistsAPI.createPlaylist(name);
-      const res = await playlistsAPI.getPlaylists();
-      const pls = ((res as any).results || (Array.isArray(res) ? res : [])).map(adaptPlaylist);
-      setPlaylists(pls.filter((p: Playlist) => p.ownerId === String(currentUser.id)));
+      await refreshPlaylists();
       setName('');
-      setBackendOffline(false);
     } catch {
       alert('Backend offline. Cannot create playlist.');
     }
@@ -64,11 +69,8 @@ export default function PlaylistsPage() {
     if (!newName || !newName.trim() || newName === oldName) return;
     
     try {
-      await playlistsAPI.updatePlaylist(plId, { name: newName.trim() } as any);
-      const res = await playlistsAPI.getPlaylists();
-      const pls = (res as any).results || (Array.isArray(res) ? res : []);
-      setPlaylists(pls);
-      setBackendOffline(false);
+      await playlistsAPI.updatePlaylist(plId, { title: newName.trim() } as any);
+      await refreshPlaylists();
     } catch {
       alert('Backend offline. Cannot rename playlist.');
     }
@@ -78,10 +80,7 @@ export default function PlaylistsPage() {
     if (!confirm('Are you sure you want to delete this playlist?')) return;
     try {
       await playlistsAPI.deletePlaylist(plId);
-      const res = await playlistsAPI.getPlaylists();
-      const pls = (res as any).results || (Array.isArray(res) ? res : []);
-      setPlaylists(pls);
-      setBackendOffline(false);
+      await refreshPlaylists();
     } catch {
       alert('Backend offline. Cannot delete playlist.');
     }
@@ -90,10 +89,7 @@ export default function PlaylistsPage() {
   const removeTrackFromPlaylist = async (plId: string, trackId: string) => {
     try {
       await playlistsAPI.removeTrack(plId, trackId);
-      const res = await playlistsAPI.getPlaylists();
-      const pls = (res as any).results || (Array.isArray(res) ? res : []);
-      setPlaylists(pls);
-      setBackendOffline(false);
+      await refreshPlaylists();
     } catch {
       alert('Backend offline. Cannot remove track from playlist.');
     }

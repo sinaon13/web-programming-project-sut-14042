@@ -7,6 +7,7 @@
  */
 
 import { Track, Album, Playlist, Ticket, AppNotification, User } from './types';
+import { BASE_HOST } from './api';
 
 // ---------------------------------------------------------------------------
 // Track Adapter
@@ -22,13 +23,13 @@ export function adaptTrack(raw: any): Track {
     album: raw.album_title || (raw.album && typeof raw.album === 'object' ? raw.album.title : '') || '',
     albumId: raw.album && typeof raw.album === 'object' ? String(raw.album.id) : (raw.album ? String(raw.album) : undefined),
     coverUrl: (raw.cover || raw.coverUrl) 
-      ? ((raw.cover || raw.coverUrl).startsWith('/media/') ? `http://127.0.0.1:8000${raw.cover || raw.coverUrl}` : (raw.cover || raw.coverUrl))
+      ? ((raw.cover || raw.coverUrl).startsWith('/media/') ? `${BASE_HOST}${raw.cover || raw.coverUrl}` : (raw.cover || raw.coverUrl))
       : 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=300',
     audioUrl: (raw.audio_file || raw.audioUrl)
-      ? ((raw.audio_file || raw.audioUrl).startsWith('/media/') ? `http://127.0.0.1:8000${raw.audio_file || raw.audioUrl}` : (raw.audio_file || raw.audioUrl))
+      ? ((raw.audio_file || raw.audioUrl).startsWith('/media/') ? `${BASE_HOST}${raw.audio_file || raw.audioUrl}` : (raw.audio_file || raw.audioUrl))
       : 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3',
     audioUrl128: (raw.audio_file_128 || raw.audioUrl128)
-      ? ((raw.audio_file_128 || raw.audioUrl128).startsWith('/media/') ? `http://127.0.0.1:8000${raw.audio_file_128 || raw.audioUrl128}` : (raw.audio_file_128 || raw.audioUrl128))
+      ? ((raw.audio_file_128 || raw.audioUrl128).startsWith('/media/') ? `${BASE_HOST}${raw.audio_file_128 || raw.audioUrl128}` : (raw.audio_file_128 || raw.audioUrl128))
       : '',
     listenersCount: raw.listeners_count ?? raw.listenersCount ?? 0,
     totalStreams: raw.total_streams ?? raw.totalStreams ?? 0,
@@ -55,7 +56,7 @@ export function adaptAlbum(raw: any): Album {
     artistId: String(artist.id || raw.artist_id || ''),
     artistName: artist.display_name || artist.username || raw.artist_name || '',
     coverUrl: (raw.cover || raw.coverUrl)
-      ? ((raw.cover || raw.coverUrl).startsWith('/media/') ? `http://127.0.0.1:8000${raw.cover || raw.coverUrl}` : (raw.cover || raw.coverUrl))
+      ? ((raw.cover || raw.coverUrl).startsWith('/media/') ? `${BASE_HOST}${raw.cover || raw.coverUrl}` : (raw.cover || raw.coverUrl))
       : 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=300',
     releaseDate: raw.release_date || raw.releaseDate || '',
     genre: raw.genre || '',

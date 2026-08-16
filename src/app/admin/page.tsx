@@ -18,8 +18,8 @@ export default function AdminPortalPage() {
   const [dashboardStats, setDashboardStats] = useState<any>(null);
   const [plans, setPlans] = useState<any[]>([]);
   
-  const [silverPrice, setSilverPrice] = useState(50000);
-  const [goldPrice, setGoldPrice] = useState(120000);
+  const [silverPrice, setSilverPrice] = useState(0);
+  const [goldPrice, setGoldPrice] = useState(0);
   
   const [replyTexts, setReplyTexts] = useState<Record<string, string>>({});
   const [advanceTimeDays, setAdvanceTimeDays] = useState(30);
@@ -31,8 +31,8 @@ export default function AdminPortalPage() {
       const pricesResp = await subscriptionsAPI.getPlans();
       const pList = (pricesResp as any).results || (Array.isArray(pricesResp) ? pricesResp : []);
       setPlans(pList);
-      const s = pList.find((p: any) => p.tier === 'SILVER')?.price || 50000;
-      const g = pList.find((p: any) => p.tier === 'GOLD')?.price || 120000;
+      const s = pList.find((p: any) => p.tier === 'SILVER')?.price || 0;
+      const g = pList.find((p: any) => p.tier === 'GOLD')?.price || 0;
       setSilverPrice(s);
       setGoldPrice(g);
 

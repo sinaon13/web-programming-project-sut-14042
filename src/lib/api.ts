@@ -2,7 +2,8 @@
 // Base URL points to Django dev server on port 8000
 import { User, Role, Track, Album, Playlist, AppNotification, Ticket } from './types';
 
-export const BASE_URL = 'http://localhost:8000/api';
+export const BASE_HOST = process.env.NEXT_PUBLIC_API_URL ? new URL(process.env.NEXT_PUBLIC_API_URL).origin : 'http://localhost:8000';
+export const BASE_URL = `${BASE_HOST}/api`;
 
 // ---------------------------------------------------------------------------
 // Token Management
@@ -262,7 +263,7 @@ export const musicAPI = {
 
   downloadTrack: async (id: string | number) => {
     const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') : null;
-    const url = `http://127.0.0.1:8000/api/music/tracks/${id}/download/`;
+    const url = `${BASE_URL}/music/tracks/${id}/download/`;
     
     // We fetch it explicitly so we can pass the auth header and handle the redirect/blob
     const res = await fetch(url, {

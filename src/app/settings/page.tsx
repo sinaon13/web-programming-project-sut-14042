@@ -21,7 +21,7 @@ function SettingsContent() {
   const { volume, setVolume } = usePlayer();
   const { language, setLanguage, t } = useLanguage();
   const searchParams = useSearchParams();
-  const [prices, setPrices] = useState({ SILVER: 50000, GOLD: 120000 });
+  const [prices, setPrices] = useState({ SILVER: 0, GOLD: 0 });
   const [planIds, setPlanIds] = useState<Record<string, number>>({});
   const [backendOffline, setBackendOffline] = useState(false);
   const [paymentProcessing, setPaymentProcessing] = useState(false);
@@ -40,8 +40,8 @@ function SettingsContent() {
         const silver = plans.find((p: any) => p.tier === 'SILVER');
         const gold = plans.find((p: any) => p.tier === 'GOLD');
         setPrices({
-          SILVER: silver?.price || 50000,
-          GOLD: gold?.price || 120000,
+          SILVER: silver?.price || 0,
+          GOLD: gold?.price || 0,
         });
         setPlanIds({
           SILVER: silver?.id,
