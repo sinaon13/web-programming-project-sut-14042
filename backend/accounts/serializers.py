@@ -83,6 +83,9 @@ class UserProfileSerializer(serializers.ModelSerializer):
     tier = serializers.SerializerMethodField()
     subscription_expires_at = serializers.SerializerMethodField()
     subscription_days_left = serializers.SerializerMethodField()
+    daily_streams = serializers.SerializerMethodField()
+    daily_stream_limit = serializers.SerializerMethodField()
+    playlist_limit = serializers.SerializerMethodField()
 
     class Meta:
         model = User
@@ -92,10 +95,12 @@ class UserProfileSerializer(serializers.ModelSerializer):
             'artist_status', 'rejection_reason', 'is_verified',
             'followers_count', 'following_count',
             'date_joined', 'tier', 'is_monetized', 'total_earnings', 'subscription_expires_at', 'subscription_days_left',
+            'daily_streams', 'daily_stream_limit', 'playlist_limit',
         ]
         read_only_fields = [
             'id', 'email', 'role', 'artist_status', 'rejection_reason',
             'is_verified', 'date_joined', 'tier', 'is_monetized', 'total_earnings', 'subscription_expires_at', 'subscription_days_left',
+            'daily_streams', 'daily_stream_limit', 'playlist_limit',
         ]
 
     def get_followers_count(self, obj):
@@ -104,32 +109,43 @@ class UserProfileSerializer(serializers.ModelSerializer):
     def get_following_count(self, obj):
         return obj.following.count()
 
-    def _get_active_subscription(self, obj):
-        if not hasattr(self, '_active_subs'):
-            self._active_subs = {}
-        if obj.id not in self._active_subs:
-            from subscriptions.models import UserSubscription
-            from subscriptions.utils import get_current_time
-            self._active_subs[obj.id] = UserSubscription.objects.filter(
-                user=obj, is_active=True, expires_at__gt=get_current_time()
-            ).first()
-        return self._active_subs[obj.id]
-
     def get_tier(self, obj):
-        sub = self._get_active_subscription(obj)
-        return sub.plan.tier if sub else 'BASIC'
+        return obj.get_tier()
         
     def get_subscription_expires_at(self, obj):
-        sub = self._get_active_subscription(obj)
+        sub = obj.get_active_subscription()
         return sub.expires_at if sub else None
 
     def get_subscription_days_left(self, obj):
-        sub = self._get_active_subscription(obj)
+        sub = obj.get_active_subscription()
         if sub:
             from subscriptions.utils import get_current_time
             delta = sub.expires_at - get_current_time()
             return max(0, delta.days)
         return 0
+
+    def get_daily_streams(self, obj):
+        from subscriptions.utils import get_current_time
+        from music.models import StreamLog
+        from django.utils.timezone import localtime
+        today = localtime(get_current_time()).date()
+        return StreamLog.objects.filter(user=obj, streamed_at__date=today).count()
+
+    def get_daily_stream_limit(self, obj):
+        from subscriptions.models import SubscriptionPlan
+        try:
+            plan = SubscriptionPlan.objects.get(tier=obj.get_tier())
+            return plan.daily_stream_limit
+        except SubscriptionPlan.DoesNotExist:
+            return 60  # fallback
+
+    def get_playlist_limit(self, obj):
+        from subscriptions.models import SubscriptionPlan
+        try:
+            plan = SubscriptionPlan.objects.get(tier=obj.get_tier())
+            return plan.max_playlists
+        except SubscriptionPlan.DoesNotExist:
+            return 6  # fallback
 
     def validate_avatar(self, value):
         import os

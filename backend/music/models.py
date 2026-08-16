@@ -59,6 +59,8 @@ class Track(models.Model):
         return f'{self.title} — {self.artist.display_name}'
 
 
+from subscriptions.utils import get_current_time
+
 class StreamLog(models.Model):
     """Logs every stream event for analytics, daily limits, and payout calculation."""
 
@@ -66,7 +68,7 @@ class StreamLog(models.Model):
         settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='stream_logs',
     )
     track = models.ForeignKey(Track, on_delete=models.CASCADE, related_name='stream_logs')
-    streamed_at = models.DateTimeField(auto_now_add=True)
+    streamed_at = models.DateTimeField(default=get_current_time)
 
     class Meta:
         indexes = [

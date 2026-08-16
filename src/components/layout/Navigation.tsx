@@ -44,6 +44,14 @@ export const Navigation: React.FC = () => {
                 <span className="text-neutral-400 ml-1 lowercase">({currentUser.subscriptionDaysLeft} days left)</span>
               )}
             </span>
+            {currentUser.dailyStreams !== undefined && currentUser.dailyStreamLimit !== undefined && (
+              <div className="mt-1 flex items-center justify-between text-[10px] text-neutral-400">
+                <span>Streams Today</span>
+                <span className={currentUser.dailyStreamLimit !== null && currentUser.dailyStreams >= currentUser.dailyStreamLimit ? 'text-red-400 font-bold' : ''}>
+                  {currentUser.dailyStreams} / {currentUser.dailyStreamLimit ?? '∞'}
+                </span>
+              </div>
+            )}
           </div>
         </div>
 

@@ -49,11 +49,11 @@ export default function PlaylistsPage() {
 
   if (!currentUser) return null;
 
-  const maxPlaylists = currentUser.tier === 'BASIC' ? 6 : currentUser.tier === 'SILVER' ? 100 : 9999;
+  const maxPlaylists = currentUser.playlistLimit ?? 6;
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (playlists.length >= maxPlaylists) return alert(`Limit reached! Upgrade your tier to create more than ${maxPlaylists} playlists.`);
+    if (playlists.length >= maxPlaylists && maxPlaylists !== null) return alert(`Limit reached! Upgrade your tier to create more than ${maxPlaylists} playlists.`);
     
     try {
       await playlistsAPI.createPlaylist(name);
@@ -109,7 +109,7 @@ export default function PlaylistsPage() {
       <BackendOfflineBanner show={backendOffline} />
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-neutral-900 border border-neutral-800 p-6 rounded-xl gap-4 shadow-xl">
         <div>
-          <h2 className="text-lg font-bold text-white">{t.playlistsTitle} ({playlists.length} / {maxPlaylists === 9999 ? 'Unlimited' : maxPlaylists})</h2>
+          <h2 className="text-lg font-bold text-white">{t.playlistsTitle} ({playlists.length} / {maxPlaylists === null ? 'Unlimited' : maxPlaylists})</h2>
           <p className="text-xs text-neutral-400">{t.currentTierLabel} <span className="text-green-400 font-bold">{currentUser.tier}</span></p>
         </div>
         <form onSubmit={handleCreate} className="flex space-x-2 w-full md:w-auto">

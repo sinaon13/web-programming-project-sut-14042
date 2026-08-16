@@ -59,10 +59,25 @@ class CustomUser(AbstractUser):
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = ['username']
 
+    def get_active_subscription(self):
+        """Returns the active UserSubscription for this user, or None."""
+        if hasattr(self, 'subscription'):
+            sub = self.subscription
+            if sub and sub.is_active and sub.plan:
+                from subscriptions.utils import get_current_time
+                if sub.expires_at > get_current_time():
+                    return sub
+        return None
+
+    def get_tier(self):
+        """Returns the user's active tier name (e.g. 'BASIC', 'SILVER', 'GOLD')."""
+        sub = self.get_active_subscription()
+        if sub:
+            return sub.plan.tier
+        return 'BASIC'
+
     def __str__(self):
         return f'{self.display_name or self.username} ({self.role})'
-
-
 class UserPreferences(models.Model):
     """Stores user preferences synced across devices."""
 

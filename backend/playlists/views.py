@@ -12,13 +12,8 @@ from .serializers import (
     PlaylistDetailSerializer,
     AddTrackToPlaylistSerializer,
 )
-
-# Playlist limits by subscription tier (from project doc table)
-PLAYLIST_LIMITS = {
-    'BASIC': 6,        # Basic (free) tier: max 6 playlists
-    'SILVER': 100,     # Silver tier: max 100 playlists
-    'GOLD': None,      # Gold tier: unlimited
-}
+from rest_framework.exceptions import ValidationError
+from subscriptions.models import SubscriptionPlan
 
 
 class PlaylistListCreateView(generics.ListCreateAPIView):
@@ -50,17 +45,17 @@ class PlaylistListCreateView(generics.ListCreateAPIView):
         user = self.request.user
 
         # Check playlist limit based on tier
-        tier = 'BASIC'
-        if hasattr(user, 'subscription'):
-            sub = user.subscription
-            if sub and sub.is_active and sub.plan:
-                tier = sub.plan.tier
+        tier = user.get_tier()
+        
+        try:
+            plan = SubscriptionPlan.objects.get(tier=tier)
+            limit = plan.max_playlists
+        except SubscriptionPlan.DoesNotExist:
+            limit = 6
 
-        limit = PLAYLIST_LIMITS.get(tier)
         if limit is not None:
             current_count = Playlist.objects.filter(owner=user).count()
             if current_count >= limit:
-                from rest_framework.exceptions import ValidationError
                 raise ValidationError(
                     f'Playlist limit ({limit}) reached for your plan. Upgrade to create more.'
                 )

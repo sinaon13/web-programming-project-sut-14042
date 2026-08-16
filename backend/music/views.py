@@ -9,8 +9,11 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.parsers import MultiPartParser, FormParser
 from django.shortcuts import get_object_or_404
 from django.http import HttpResponseRedirect, FileResponse, Http404
-from rest_framework.exceptions import PermissionDenied
+from rest_framework.exceptions import PermissionDenied, AuthenticationFailed
 from notifications.models import Notification
+from rest_framework_simplejwt.authentication import JWTAuthentication
+from subscriptions.utils import get_current_time
+from subscriptions.models import SubscriptionPlan
 
 from accounts.permissions import IsApprovedArtist, IsOwner
 from music.models import Album, Track, StreamLog
@@ -21,13 +24,6 @@ from .serializers import (
     TrackSerializer,
     TrackUploadSerializer,
 )
-
-# Daily stream limits per subscription tier (from project doc table)
-DAILY_STREAM_LIMITS = {
-    'BASIC': 60,      # Basic (free) tier: 60 streams/day
-    'SILVER': None,    # Silver tier: unlimited
-    'GOLD': None,      # Gold tier: unlimited
-}
 
 
 # ---------------------------------------------------------------------------
@@ -88,27 +84,22 @@ class TrackStreamView(APIView):
         track = get_object_or_404(Track, pk=pk)
         user = request.user
 
-        # Determine user's tier (default BASIC if no subscription)
-        tier = 'BASIC'
-        is_gold = False
-        if hasattr(user, 'subscription'):
-            sub = user.subscription
-            if sub and sub.is_active and sub.plan:
-                from subscriptions.utils import get_current_time
-                if sub.expires_at > get_current_time():
-                    tier = sub.plan.tier
-                    if tier == 'GOLD':
-                        is_gold = True
+        # Determine user's tier
+        tier = user.get_tier()
+        is_gold = (tier == 'GOLD')
 
         # Check early access logic
         if track.is_early_access and track.artist != user and not is_gold:
-            from rest_framework.exceptions import PermissionDenied
             raise PermissionDenied('This VIP track is strictly available to Gold subscribers.')
 
         # Check daily limit
-        daily_limit = DAILY_STREAM_LIMITS.get(tier)
+        try:
+            plan = SubscriptionPlan.objects.get(tier=tier)
+            daily_limit = plan.daily_stream_limit
+        except SubscriptionPlan.DoesNotExist:
+            daily_limit = 60
+            
         if daily_limit is not None:
-            from subscriptions.utils import get_current_time
             today = get_current_time().date()
             today_count = StreamLog.objects.filter(
                 user=user,
@@ -145,16 +136,8 @@ class TrackDownloadView(APIView):
         track = get_object_or_404(Track, pk=pk)
         user = request.user
 
-        tier = 'BASIC'
-        is_gold = False
-        if hasattr(user, 'subscription'):
-            sub = user.subscription
-            if sub and sub.is_active and sub.plan:
-                from subscriptions.utils import get_current_time
-                if sub.expires_at > get_current_time():
-                    tier = sub.plan.tier
-                    if tier == 'GOLD':
-                        is_gold = True
+        tier = user.get_tier()
+        is_gold = (tier == 'GOLD')
 
         if track.is_early_access and track.artist != user and not is_gold:
             raise PermissionDenied('Downloading VIP tracks is restricted to Gold subscribers.')
@@ -179,9 +162,6 @@ class TrackPlayView(APIView):
     # because <audio> tags do not send Authorization headers.
     
     def get(self, request, pk):
-        from rest_framework_simplejwt.authentication import JWTAuthentication
-        from rest_framework.exceptions import AuthenticationFailed
-        
         # Authenticate via query param for audio streams
         token = request.GET.get('token')
         if not token:
@@ -196,24 +176,21 @@ class TrackPlayView(APIView):
             
         track = get_object_or_404(Track, pk=pk)
         
-        tier = 'BASIC'
-        is_gold = False
-        if hasattr(user, 'subscription'):
-            sub = user.subscription
-            if sub and sub.is_active and sub.plan:
-                from subscriptions.utils import get_current_time
-                if sub.expires_at > get_current_time():
-                    tier = sub.plan.tier
-                    if tier == 'GOLD':
-                        is_gold = True
+        tier = user.get_tier()
+        is_gold = (tier == 'GOLD')
 
         if track.is_early_access and track.artist != user and not is_gold:
             raise PermissionDenied('This VIP track is strictly available to Gold subscribers.')
 
-        daily_limit = DAILY_STREAM_LIMITS.get(tier)
+        try:
+            plan = SubscriptionPlan.objects.get(tier=tier)
+            daily_limit = plan.daily_stream_limit
+        except SubscriptionPlan.DoesNotExist:
+            daily_limit = 60
+            
         if daily_limit is not None:
-            from subscriptions.utils import get_current_time
-            today = get_current_time().date()
+            from django.utils.timezone import localtime
+            today = localtime(get_current_time()).date()
             today_count = StreamLog.objects.filter(
                 user=user,
                 streamed_at__date=today,

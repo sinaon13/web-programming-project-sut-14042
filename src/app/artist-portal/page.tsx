@@ -287,8 +287,8 @@ export default function ArtistPortalPage() {
                   <td className="py-3 font-bold text-white">{tItem.title}</td>
                   <td className="py-3 text-xs text-green-400 font-bold">{tItem.fileFormat || 'MP3'}</td>
                   <td className="py-3 text-neutral-300">{tItem.listenersCount.toLocaleString()}</td>
-                  <td className="py-3 text-neutral-300">{tItem.totalStreams?.toLocaleString() || tItem.listenersCount * 2}</td>
-                  <td className="py-3 font-mono text-amber-400 font-bold">{((tItem.totalStreams || tItem.listenersCount * 2) * 200).toLocaleString()} IRR</td>
+                  <td className="py-3 text-neutral-300">{tItem.totalStreams?.toLocaleString() || 0}</td>
+                  <td className="py-3 font-mono text-amber-400 font-bold">{((tItem.totalStreams || 0) * 0).toLocaleString()} IRR</td>
                   <td className="py-3 space-x-2">
                     <button onClick={() => handleStartEdit(tItem)} className="px-2.5 py-1 bg-blue-500/20 text-blue-400 hover:bg-blue-500/40 rounded text-xs font-bold">{t.editBtn}</button>
                     <button onClick={() => handleDeleteTrack(tItem.id)} className="px-2.5 py-1 bg-red-600/20 text-red-400 hover:bg-red-600/40 rounded text-xs font-bold flex items-center">

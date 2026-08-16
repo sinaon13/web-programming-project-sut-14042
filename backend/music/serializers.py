@@ -61,13 +61,7 @@ class TrackSerializer(serializers.ModelSerializer):
         user = request.user
         if track.artist == user:
             return True
-        if hasattr(user, 'subscription'):
-            sub = user.subscription
-            if sub and sub.is_active and sub.plan and sub.plan.tier == 'GOLD':
-                from subscriptions.utils import get_current_time
-                if sub.expires_at > get_current_time():
-                    return True
-        return False
+        return user.get_tier() == 'GOLD'
 
     def get_audio_file(self, obj):
         if obj.is_early_access and not self._is_user_gold_or_owner(obj):

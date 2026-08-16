@@ -4,18 +4,13 @@ import React, { useEffect } from 'react';
 export const PwaRegistry: React.FC = () => {
   useEffect(() => {
     if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
-      navigator.serviceWorker.getRegistrations().then((registrations) => {
-        for (const registration of registrations) {
-          registration.unregister();
-        }
-      });
-      if ('caches' in window) {
-        caches.keys().then((names) => {
-          for (const name of names) {
-            caches.delete(name);
+      window.addEventListener('load', function() {
+        navigator.serviceWorker.register('/sw.js').catch(
+          function(err) {
+            console.log('Service Worker registration failed: ', err);
           }
-        });
-      }
+        );
+      });
     }
   }, []);
 
