@@ -1,5 +1,6 @@
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
+from django.db.models import Sum
 from accounts.models import UserPreferences
 
 User = get_user_model()
@@ -103,23 +104,29 @@ class UserProfileSerializer(serializers.ModelSerializer):
     def get_following_count(self, obj):
         return obj.following.count()
 
+    def _get_active_subscription(self, obj):
+        if not hasattr(self, '_active_subs'):
+            self._active_subs = {}
+        if obj.id not in self._active_subs:
+            from subscriptions.models import UserSubscription
+            from subscriptions.utils import get_current_time
+            self._active_subs[obj.id] = UserSubscription.objects.filter(
+                user=obj, is_active=True, expires_at__gt=get_current_time()
+            ).first()
+        return self._active_subs[obj.id]
+
     def get_tier(self, obj):
-        from subscriptions.models import UserSubscription
-        from subscriptions.utils import get_current_time
-        sub = UserSubscription.objects.filter(user=obj, is_active=True, expires_at__gt=get_current_time()).first()
+        sub = self._get_active_subscription(obj)
         return sub.plan.tier if sub else 'BASIC'
         
     def get_subscription_expires_at(self, obj):
-        from subscriptions.models import UserSubscription
-        from subscriptions.utils import get_current_time
-        sub = UserSubscription.objects.filter(user=obj, is_active=True, expires_at__gt=get_current_time()).first()
+        sub = self._get_active_subscription(obj)
         return sub.expires_at if sub else None
 
     def get_subscription_days_left(self, obj):
-        from subscriptions.models import UserSubscription
-        from subscriptions.utils import get_current_time
-        sub = UserSubscription.objects.filter(user=obj, is_active=True, expires_at__gt=get_current_time()).first()
+        sub = self._get_active_subscription(obj)
         if sub:
+            from subscriptions.utils import get_current_time
             delta = sub.expires_at - get_current_time()
             return max(0, delta.days)
         return 0
@@ -127,20 +134,19 @@ class UserProfileSerializer(serializers.ModelSerializer):
     def validate_avatar(self, value):
         import os
         ALLOWED_IMAGE_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.webp']
+        MAX_IMAGE_SIZE_MB = 5
         
         if value:
             ext = os.path.splitext(value.name)[1].lower()
             if ext not in ALLOWED_IMAGE_EXTENSIONS:
                 raise serializers.ValidationError(f'Unsupported image format "{ext}". Allowed: {", ".join(ALLOWED_IMAGE_EXTENSIONS)}')
+            
+            if value.size > MAX_IMAGE_SIZE_MB * 1024 * 1024:
+                raise serializers.ValidationError(f'Avatar image is too large. Max size is {MAX_IMAGE_SIZE_MB}MB.')
 
         user = self.context['request'].user
-        tier = 'BASIC'
-        if hasattr(user, 'subscription'):
-            sub = user.subscription
-            if sub and sub.plan:
-                from subscriptions.utils import get_current_time
-                if sub.is_active and sub.expires_at > get_current_time():
-                    tier = sub.plan.tier
+        sub = self._get_active_subscription(user)
+        tier = sub.plan.tier if sub else 'BASIC'
         
         if tier == 'BASIC':
             raise serializers.ValidationError('Avatar upload is restricted on Free Basic tier. Please upgrade to Silver or Gold.')
@@ -173,22 +179,50 @@ class PublicUserSerializer(serializers.ModelSerializer):
             return request.user.following.filter(pk=obj.pk).exists()
         return False
 
+    def _get_active_subscription(self, obj):
+        if not hasattr(self, '_active_subs'):
+            self._active_subs = {}
+        if obj.id not in self._active_subs:
+            from subscriptions.models import UserSubscription
+            from subscriptions.utils import get_current_time
+            self._active_subs[obj.id] = UserSubscription.objects.filter(
+                user=obj, is_active=True, expires_at__gt=get_current_time()
+            ).first()
+        return self._active_subs[obj.id]
+
     def get_subscription_days_left(self, obj):
-        from subscriptions.models import UserSubscription
-        from subscriptions.utils import get_current_time
-        sub = UserSubscription.objects.filter(user=obj, is_active=True, expires_at__gt=get_current_time()).first()
+        sub = self._get_active_subscription(obj)
         if sub:
+            from subscriptions.utils import get_current_time
             delta = sub.expires_at - get_current_time()
             return max(0, delta.days)
         return 0
 
+    def _is_request_user_gold(self):
+        request = self.context.get('request')
+        if not request or not request.user.is_authenticated:
+            return False
+        user = request.user
+        if hasattr(user, 'subscription'):
+            sub = user.subscription
+            if sub and sub.is_active and sub.plan and sub.plan.tier == 'GOLD':
+                from subscriptions.utils import get_current_time
+                if sub.expires_at > get_current_time():
+                    return True
+        return False
+
     def get_total_streams(self, obj):
-        from django.db.models import Sum
-        # Calculate total listeners directly from the DB
-        agg = obj.tracks.aggregate(
-            total=Sum('total_streams')
-        )
-        return agg['total'] or 0
+        # Only return stats to Gold users (or the artist themselves)
+        request = self.context.get('request')
+        if not request or not request.user.is_authenticated:
+            return None
+            
+        if request.user != obj and not self._is_request_user_gold():
+            return None
+            
+        from music.models import StreamLog
+        # Calculate unique listeners directly from the DB
+        return StreamLog.objects.filter(track__artist=obj).values('user').distinct().count()
 
     def get_tracks_count(self, obj):
         return obj.tracks.count()

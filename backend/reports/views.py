@@ -10,6 +10,7 @@ from rest_framework.permissions import IsAuthenticated
 
 from accounts.permissions import IsAdmin, IsApprovedArtist
 from music.models import Track, StreamLog
+from subscriptions.models import UserSubscription, Transaction
 
 User = get_user_model()
 
@@ -30,39 +31,33 @@ class AdminDashboardView(APIView):
 
     def get(self, request):
         # Tier distribution
-        try:
-            from subscriptions.models import UserSubscription, Transaction
-            tier_distribution = list(
-                UserSubscription.objects.filter(is_active=True)
-                .values('plan__tier')
-                .annotate(count=Count('id'))
-                .order_by('plan__tier')
+        tier_distribution = list(
+            UserSubscription.objects.filter(is_active=True)
+            .values('plan__tier')
+            .annotate(count=Count('id'))
+            .order_by('plan__tier')
+        )
+
+        # Monthly revenue (last 12 months)
+        twelve_months_ago = date.today() - timedelta(days=365)
+        monthly_revenue = list(
+            Transaction.objects.filter(
+                status='SUCCESS',
+                verified_at__date__gte=twelve_months_ago,
             )
+            .annotate(month=TruncMonth('verified_at'))
+            .values('month')
+            .annotate(total=Sum('amount'))
+            .order_by('month')
+        )
 
-            # Monthly revenue (last 12 months)
-            twelve_months_ago = date.today() - timedelta(days=365)
-            monthly_revenue = list(
-                Transaction.objects.filter(
-                    status='SUCCESS',
-                    verified_at__date__gte=twelve_months_ago,
-                )
-                .annotate(month=TruncMonth('verified_at'))
-                .values('month')
-                .annotate(total=Sum('amount'))
-                .order_by('month')
-            )
+        # Convert dates to strings for JSON
+        for entry in monthly_revenue:
+            entry['month'] = entry['month'].strftime('%Y-%m') if entry['month'] else None
 
-            # Convert dates to strings for JSON
-            for entry in monthly_revenue:
-                entry['month'] = entry['month'].strftime('%Y-%m') if entry['month'] else None
-
-            total_revenue = Transaction.objects.filter(status='SUCCESS').aggregate(
-                total=Sum('amount')
-            )['total'] or 0
-        except ImportError:
-            tier_distribution = []
-            monthly_revenue = []
-            total_revenue = 0
+        total_revenue = Transaction.objects.filter(status='SUCCESS').aggregate(
+            total=Sum('amount')
+        )['total'] or 0
 
         # General stats
         total_users = User.objects.filter(is_active=True).count()

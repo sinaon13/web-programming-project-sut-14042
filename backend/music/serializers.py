@@ -39,6 +39,10 @@ class TrackSerializer(serializers.ModelSerializer):
 
     artist = ArtistMiniSerializer(read_only=True)
     album_title = serializers.CharField(source='album.title', read_only=True, default=None)
+    audio_file = serializers.SerializerMethodField()
+    audio_file_128 = serializers.SerializerMethodField()
+    listeners_count = serializers.SerializerMethodField()
+    total_streams = serializers.SerializerMethodField()
 
     class Meta:
         model = Track
@@ -49,6 +53,45 @@ class TrackSerializer(serializers.ModelSerializer):
             'file_format', 'is_early_access',
             'listeners_count', 'total_streams',
         ]
+
+    def _is_user_gold_or_owner(self, track):
+        request = self.context.get('request')
+        if not request or not request.user.is_authenticated:
+            return False
+        user = request.user
+        if track.artist == user:
+            return True
+        if hasattr(user, 'subscription'):
+            sub = user.subscription
+            if sub and sub.is_active and sub.plan and sub.plan.tier == 'GOLD':
+                from subscriptions.utils import get_current_time
+                if sub.expires_at > get_current_time():
+                    return True
+        return False
+
+    def get_audio_file(self, obj):
+        if obj.is_early_access and not self._is_user_gold_or_owner(obj):
+            return None
+        return obj.audio_file.url if obj.audio_file else None
+
+    def get_audio_file_128(self, obj):
+        if obj.is_early_access and not self._is_user_gold_or_owner(obj):
+            return None
+        return obj.audio_file_128.url if obj.audio_file_128 else None
+
+    def get_listeners_count(self, obj):
+        request = self.context.get('request')
+        if request and hasattr(request, 'user') and request.user.is_authenticated:
+            if self._is_user_gold_or_owner(obj):
+                return obj.listeners_count
+        return None
+
+    def get_total_streams(self, obj):
+        request = self.context.get('request')
+        if request and hasattr(request, 'user') and request.user.is_authenticated:
+            if self._is_user_gold_or_owner(obj):
+                return obj.total_streams
+        return None
 
 
 class AlbumDetailSerializer(serializers.ModelSerializer):

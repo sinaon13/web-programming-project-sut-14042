@@ -2,12 +2,15 @@ from datetime import date
 
 from django.db.models import F, Q
 from django.utils import timezone
-from rest_framework import generics, status
+from rest_framework import generics, status, viewsets
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, IsAuthenticatedOrReadOnly
 from rest_framework.parsers import MultiPartParser, FormParser
 from django.shortcuts import get_object_or_404
+from django.http import HttpResponseRedirect
+from rest_framework.exceptions import PermissionDenied
+from notifications.models import Notification
 
 from accounts.permissions import IsApprovedArtist, IsOwner
 from music.models import Album, Track, StreamLog
@@ -31,51 +34,35 @@ DAILY_STREAM_LIMITS = {
 # Track Views
 # ---------------------------------------------------------------------------
 
-class TrackListCreateView(generics.ListCreateAPIView):
+class TrackViewSet(viewsets.ModelViewSet):
     """
-    GET  /api/music/tracks/       — Browse all tracks (filterable)
-    POST /api/music/tracks/       — Upload a new track (approved artists only)
+    ViewSet for viewing, creating, updating, and deleting tracks.
     """
-
+    queryset = Track.objects.select_related('artist', 'album').all()
     parser_classes = [MultiPartParser, FormParser]
     filterset_fields = ['genre', 'release_type', 'artist', 'album']
     search_fields = ['title', 'artist__display_name', 'genre']
     ordering_fields = ['release_date', 'total_streams', 'title']
 
     def get_serializer_class(self):
-        if self.request.method == 'POST':
+        if self.action in ['create', 'update', 'partial_update']:
             return TrackUploadSerializer
         return TrackSerializer
 
     def get_permissions(self):
-        if self.request.method == 'POST':
+        if self.action == 'create':
             return [IsAuthenticated(), IsApprovedArtist()]
+        elif self.action in ['update', 'partial_update', 'destroy']:
+            return [IsAuthenticated(), IsOwner()]
         return [IsAuthenticatedOrReadOnly()]
 
     def get_queryset(self):
-        qs = Track.objects.select_related('artist', 'album').all()
-        # Filter out early-access tracks for non-premium users
-        user = self.request.user
-        
-        tier = 'BASIC'
-        if user.is_authenticated and hasattr(user, 'subscription'):
-            sub = user.subscription
-            if sub and sub.is_active and sub.plan:
-                tier = sub.plan.tier
-                
-        if not user.is_authenticated or tier in ['BASIC', 'SILVER']:
-            # But the artist themselves can see their own tracks even if they are basic/silver
-            if user.is_authenticated:
-                qs = qs.filter(Q(is_early_access=False) | Q(artist=user))
-            else:
-                qs = qs.filter(is_early_access=False)
+        qs = super().get_queryset()
         return qs
 
     def perform_create(self, serializer):
         track = serializer.save(artist=self.request.user)
         
-        # Notify followers
-        from notifications.models import Notification
         followers = self.request.user.followers.all()
         notifications = [
             Notification(
@@ -87,27 +74,6 @@ class TrackListCreateView(generics.ListCreateAPIView):
             for follower in followers
         ]
         Notification.objects.bulk_create(notifications)
-
-
-
-class TrackDetailView(generics.RetrieveUpdateDestroyAPIView):
-    """
-    GET/PATCH/DELETE /api/music/tracks/<id>/
-    Read by anyone; write by owning artist only.
-    """
-
-    queryset = Track.objects.select_related('artist', 'album').all()
-    parser_classes = [MultiPartParser, FormParser]
-
-    def get_serializer_class(self):
-        if self.request.method in ('PATCH', 'PUT'):
-            return TrackUploadSerializer
-        return TrackSerializer
-
-    def get_permissions(self):
-        if self.request.method in ('PATCH', 'PUT', 'DELETE'):
-            return [IsAuthenticated(), IsOwner()]
-        return [IsAuthenticatedOrReadOnly()]
 
 
 class TrackStreamView(APIView):
@@ -124,10 +90,20 @@ class TrackStreamView(APIView):
 
         # Determine user's tier (default BASIC if no subscription)
         tier = 'BASIC'
+        is_gold = False
         if hasattr(user, 'subscription'):
             sub = user.subscription
             if sub and sub.is_active and sub.plan:
-                tier = sub.plan.tier
+                from subscriptions.utils import get_current_time
+                if sub.expires_at > get_current_time():
+                    tier = sub.plan.tier
+                    if tier == 'GOLD':
+                        is_gold = True
+
+        # Check early access logic
+        if track.is_early_access and track.artist != user and not is_gold:
+            from rest_framework.exceptions import PermissionDenied
+            raise PermissionDenied('This VIP track is strictly available to Gold subscribers.')
 
         # Check daily limit
         daily_limit = DAILY_STREAM_LIMITS.get(tier)
@@ -145,17 +121,16 @@ class TrackStreamView(APIView):
 
         # Log the stream
         StreamLog.objects.create(user=user, track=track)
+        
+        # Denormalized counters
+        track.total_streams = F('total_streams') + 1
+        track.save(update_fields=['total_streams'])
 
-        # Update denormalized counters
-        Track.objects.filter(pk=pk).update(total_streams=F('total_streams') + 1)
-
-        # Check if this is a new unique listener
-        is_new_listener = not StreamLog.objects.filter(
-            user=user, track=track,
-        ).exclude(pk=StreamLog.objects.filter(user=user, track=track).latest('streamed_at').pk).exists()
-
-        if is_new_listener:
-            Track.objects.filter(pk=pk).update(listeners_count=F('listeners_count') + 1)
+        # Unique listener counter logic (if needed in model, but we fetch directly from DB now)
+        # We can safely increment listeners_count just to keep the old field accurate
+        if not StreamLog.objects.filter(user=user, track=track).exclude(id=StreamLog.objects.latest('id').id).exists():
+            track.listeners_count = F('listeners_count') + 1
+            track.save(update_fields=['listeners_count'])
 
         return Response({'detail': 'Stream logged successfully.'})
 
@@ -170,21 +145,27 @@ class TrackDownloadView(APIView):
         user = request.user
 
         tier = 'BASIC'
+        is_gold = False
         if hasattr(user, 'subscription'):
             sub = user.subscription
             if sub and sub.is_active and sub.plan:
-                tier = sub.plan.tier
+                from subscriptions.utils import get_current_time
+                if sub.expires_at > get_current_time():
+                    tier = sub.plan.tier
+                    if tier == 'GOLD':
+                        is_gold = True
+
+        if track.is_early_access and track.artist != user and not is_gold:
+            raise PermissionDenied('Downloading VIP tracks is restricted to Gold subscribers.')
 
         # Allow artist to download own track regardless of tier
         if tier == 'BASIC' and track.artist != user:
-            from rest_framework.exceptions import PermissionDenied
             raise PermissionDenied('Downloading tracks is restricted to Silver and Gold subscribers.')
 
         if not track.audio_file:
             return Response({'detail': 'No audio file available for this track.'}, status=status.HTTP_404_NOT_FOUND)
 
         # Return redirect to media URL
-        from django.http import HttpResponseRedirect
         return HttpResponseRedirect(track.audio_file.url)
 
 
@@ -192,35 +173,37 @@ class TrackDownloadView(APIView):
 # Album Views
 # ---------------------------------------------------------------------------
 
-class AlbumListCreateView(generics.ListCreateAPIView):
+class AlbumViewSet(viewsets.ModelViewSet):
     """
-    GET  /api/music/albums/       — Browse all albums
-    POST /api/music/albums/       — Create a new album (approved artists only)
+    ViewSet for viewing, creating, updating, and deleting albums.
     """
-
     parser_classes = [MultiPartParser, FormParser]
     filterset_fields = ['genre', 'artist']
     search_fields = ['title', 'artist__display_name', 'genre']
     ordering_fields = ['release_date', 'title']
 
+    def get_queryset(self):
+        if self.action in ['retrieve', 'update', 'partial_update', 'destroy']:
+            return Album.objects.select_related('artist').prefetch_related('tracks').all()
+        return Album.objects.select_related('artist').all()
+
     def get_serializer_class(self):
-        if self.request.method == 'POST':
+        if self.action in ['create', 'update', 'partial_update']:
             return AlbumCreateSerializer
+        elif self.action == 'retrieve':
+            return AlbumDetailSerializer
         return AlbumListSerializer
 
     def get_permissions(self):
-        if self.request.method == 'POST':
+        if self.action == 'create':
             return [IsAuthenticated(), IsApprovedArtist()]
+        elif self.action in ['update', 'partial_update', 'destroy']:
+            return [IsAuthenticated(), IsOwner()]
         return [IsAuthenticatedOrReadOnly()]
-
-    def get_queryset(self):
-        return Album.objects.select_related('artist').all()
 
     def perform_create(self, serializer):
         album = serializer.save(artist=self.request.user)
         
-        # Notify followers
-        from notifications.models import Notification
         followers = self.request.user.followers.all()
         notifications = [
             Notification(
@@ -232,23 +215,3 @@ class AlbumListCreateView(generics.ListCreateAPIView):
             for follower in followers
         ]
         Notification.objects.bulk_create(notifications)
-
-
-class AlbumDetailView(generics.RetrieveUpdateDestroyAPIView):
-    """
-    GET/PATCH/DELETE /api/music/albums/<id>/
-    Read by anyone; write by owning artist only.
-    """
-
-    queryset = Album.objects.select_related('artist').prefetch_related('tracks').all()
-    parser_classes = [MultiPartParser, FormParser]
-
-    def get_serializer_class(self):
-        if self.request.method in ('PATCH', 'PUT'):
-            return AlbumCreateSerializer
-        return AlbumDetailSerializer
-
-    def get_permissions(self):
-        if self.request.method in ('PATCH', 'PUT', 'DELETE'):
-            return [IsAuthenticated(), IsOwner()]
-        return [IsAuthenticatedOrReadOnly()]
