@@ -76,10 +76,12 @@ class AlbumCreateSerializer(serializers.ModelSerializer):
 class TrackUploadSerializer(serializers.ModelSerializer):
     """Serializer for artist track upload with file validation."""
 
+    album_title = serializers.CharField(write_only=True, required=False, allow_blank=True)
+
     class Meta:
         model = Track
         fields = [
-            'id', 'title', 'album', 'cover', 'audio_file',
+            'id', 'title', 'album', 'album_title', 'cover', 'audio_file',
             'release_date', 'release_type', 'genre', 'lyrics',
             'release_year', 'collaborators', 'file_format', 'is_early_access',
         ]
@@ -97,9 +99,49 @@ class TrackUploadSerializer(serializers.ModelSerializer):
             )
         return value
 
+    def _handle_album(self, validated_data, artist):
+        album_title = validated_data.pop('album_title', None)
+        cover = validated_data.get('cover')
+        
+        # Determine if we should handle album logic
+        album_obj = validated_data.get('album')
+        if album_title:
+            album_obj, _ = Album.objects.get_or_create(
+                artist=artist,
+                title=album_title,
+                defaults={
+                    'release_date': validated_data.get('release_date', '2026-01-01'),
+                    'genre': validated_data.get('genre', ''),
+                }
+            )
+            validated_data['album'] = album_obj
+            
+        if album_obj and cover:
+            # Sync cover to album
+            album_obj.cover = cover
+            album_obj.save()
+            # Sync cover to all other tracks in the album
+            for track in album_obj.tracks.all():
+                if track.id != self.instance.id if self.instance else True:
+                    track.cover = album_obj.cover
+                    track.save(update_fields=['cover'])
+                    
+        # If part of an album, use album's cover if no cover provided
+        if album_obj and not cover and album_obj.cover:
+            validated_data['cover'] = album_obj.cover
+            
+        return validated_data
+
     def create(self, validated_data):
-        validated_data['artist'] = self.context['request'].user
+        artist = self.context['request'].user
+        validated_data['artist'] = artist
+        validated_data = self._handle_album(validated_data, artist)
         return super().create(validated_data)
+
+    def update(self, instance, validated_data):
+        artist = instance.artist
+        validated_data = self._handle_album(validated_data, artist)
+        return super().update(instance, validated_data)
 
 
 class StreamLogSerializer(serializers.ModelSerializer):

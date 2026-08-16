@@ -250,9 +250,10 @@ class AdvanceTimeView(APIView):
 
     def post(self, request):
         days = int(request.data.get('days', 0))
-        current_offset = cache.get('time_offset_days', 0)
+        from .utils import get_time_offset, set_time_offset
+        current_offset = get_time_offset()
         new_offset = current_offset + days
-        cache.set('time_offset_days', new_offset, None)
+        set_time_offset(new_offset)
         
         now = get_current_time()
         expired_subs = UserSubscription.objects.filter(is_active=True, expires_at__lte=now)

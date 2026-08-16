@@ -38,7 +38,7 @@ class TrackListCreateView(generics.ListCreateAPIView):
     """
 
     parser_classes = [MultiPartParser, FormParser]
-    filterset_fields = ['genre', 'release_type', 'artist']
+    filterset_fields = ['genre', 'release_type', 'artist', 'album']
     search_fields = ['title', 'artist__display_name', 'genre']
     ordering_fields = ['release_date', 'total_streams', 'title']
 
