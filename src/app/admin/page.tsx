@@ -57,7 +57,7 @@ export default function AdminPortalPage() {
       setBackendOffline(false);
     } catch (e) {
       console.error(e);
-      setBackendOffline(true);
+      if (err?.message?.includes("fetch") || err?.message?.includes("Network")) setBackendOffline(true);
     }
   };
 
@@ -77,7 +77,7 @@ export default function AdminPortalPage() {
       }
       setPendingArtists(pendingArtists.filter(u => u.id !== id));
       alert(`Artist successfully ${status.toLowerCase()}! Automated notification sent.`);
-    } catch {
+    } catch (err: any) {
       alert('Action failed. Is the backend offline?');
     }
   };
@@ -89,7 +89,7 @@ export default function AdminPortalPage() {
       await supportAPI.addMessage(ticketId, text.trim());
       await loadData();
       setReplyTexts({ ...replyTexts, [ticketId]: '' });
-    } catch {
+    } catch (err: any) {
       alert('Failed to send reply.');
     }
   };
@@ -101,7 +101,7 @@ export default function AdminPortalPage() {
       // Refresh payouts
       const payoutResp = await reportsAPI.getAdminPayouts();
       setPayouts(payoutResp?.payouts || []);
-    } catch {
+    } catch (err: any) {
       alert('Failed to settle payout.');
     }
   };
@@ -114,7 +114,7 @@ export default function AdminPortalPage() {
       if (sPlan) await subscriptionsAPI.updatePlanPrice(sPlan.id, silverPrice);
       if (gPlan) await subscriptionsAPI.updatePlanPrice(gPlan.id, goldPrice);
       alert('System pricing adjusted successfully without code deployment!');
-    } catch {
+    } catch (err: any) {
       alert('Failed to update prices.');
     }
   };
@@ -123,7 +123,7 @@ export default function AdminPortalPage() {
     try {
       const res = await subscriptionsAPI.advanceTime(advanceTimeDays);
       alert((res as any).detail || 'Time advanced successfully!');
-    } catch {
+    } catch (err: any) {
       alert('Failed to advance time.');
     }
   };
@@ -134,7 +134,7 @@ export default function AdminPortalPage() {
       await supportAPI.updateTicketStatus(ticketId, 'CLOSED');
       await loadData();
       alert('Ticket closed successfully.');
-    } catch {
+    } catch (err: any) {
       alert('Failed to close ticket.');
     }
   };

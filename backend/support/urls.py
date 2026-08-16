@@ -4,8 +4,7 @@ from .views import (
     TicketDetailView,
     TicketMessageCreateView,
     PendingArtistListView,
-    ArtistApproveView,
-    ArtistRejectView,
+    ArtistStatusUpdateView,
 )
 
 urlpatterns = [
@@ -16,6 +15,5 @@ urlpatterns = [
 
     # Artist approval workflow
     path('artist-requests/', PendingArtistListView.as_view(), name='artist-requests'),
-    path('artist-requests/<int:pk>/approve/', ArtistApproveView.as_view(), name='artist-approve'),
-    path('artist-requests/<int:pk>/reject/', ArtistRejectView.as_view(), name='artist-reject'),
+    path('artist-requests/<int:pk>/', ArtistStatusUpdateView.as_view(), name='artist-status-update'),
 ]

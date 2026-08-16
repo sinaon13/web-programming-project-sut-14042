@@ -49,15 +49,6 @@ class MySubscriptionView(generics.RetrieveAPIView):
     def get_object(self):
         return get_object_or_404(UserSubscription, user=self.request.user)
 
-    def retrieve(self, request, *args, **kwargs):
-        try:
-            return super().retrieve(request, *args, **kwargs)
-        except Exception:
-            return Response(
-                {'detail': 'No active subscription found.', 'tier': 'BASIC'},
-                status=status.HTTP_200_OK,
-            )
-
 
 class PurchaseView(APIView):
     """
@@ -196,9 +187,12 @@ class VerifyPaymentView(APIView):
             )
             zp_data = zp_response.json()
         except Exception:
-            # If we can't reach Zarinpal for verification, still mark success
-            # since sandbox is unreliable — the authority was real from request step
-            zp_data = {'data': {'code': 100}}
+            transaction.status = Transaction.Status.FAILED
+            transaction.save()
+            return Response(
+                {'detail': 'Gateway verification failed. Please contact support.'},
+                status=status.HTTP_502_BAD_GATEWAY
+            )
 
         zp_code = zp_data.get('data', {}).get('code')
         # code 100 = first-time success, 101 = already verified
@@ -245,8 +239,9 @@ class TransactionHistoryView(generics.ListAPIView):
         return Transaction.objects.filter(user=self.request.user)
 
 class AdvanceTimeView(APIView):
-    """POST /api/subscriptions/advance-time/ — Admin advances time for testing."""
-    permission_classes = [IsAdminUser]
+    """POST /api/subscriptions/time-offsets/ — Fast forward time (Admin)."""
+
+    permission_classes = [IsAdmin]
 
     def post(self, request):
         days = int(request.data.get('days', 0))

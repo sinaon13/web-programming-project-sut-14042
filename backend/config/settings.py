@@ -10,11 +10,13 @@ from datetime import timedelta
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+import os
+
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-pm*#z)o72bg#8$&7=!cp6rv=0+6-pdnmx7q2)iscgo4#dh=lf!'
+SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-pm*#z)o72bg#8$&7=!cp6rv=0+6-pdnmx7q2)iscgo4#dh=lf!')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.environ.get('DEBUG', 'True') == 'True'
 
 ALLOWED_HOSTS = ['*']
 

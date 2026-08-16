@@ -41,8 +41,8 @@ export default function ArtistProfilePage() {
         setArtistAlbums(albs.map(adaptAlbum));
         
         setBackendOffline(false);
-      } catch {
-        setBackendOffline(true);
+      } catch (err: any) {
+        if (err?.message?.includes("fetch") || err?.message?.includes("Network")) setBackendOffline(true);
       }
     };
     load();
@@ -58,7 +58,7 @@ export default function ArtistProfilePage() {
         await authAPI.followUser(artist.id);
         setFollowing(true);
       }
-    } catch {
+    } catch (err: any) {
       alert('Failed to update follow status.');
     }
   };

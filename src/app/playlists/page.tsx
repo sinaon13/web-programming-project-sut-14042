@@ -26,8 +26,8 @@ export default function PlaylistsPage() {
       const pls = ((plRes as any).results || (Array.isArray(plRes) ? plRes : [])).map(adaptPlaylist);
       setPlaylists(pls.filter((p: Playlist) => p.ownerId === String(currentUser?.id)));
       setBackendOffline(false);
-    } catch {
-      setBackendOffline(true);
+    } catch (err: any) {
+      if (err?.message?.includes("fetch") || err?.message?.includes("Network")) setBackendOffline(true);
     }
   };
 
@@ -39,7 +39,7 @@ export default function PlaylistsPage() {
         const trRes = await musicAPI.getTracks();
         const trks = (trRes as any).results || (Array.isArray(trRes) ? trRes : []);
         setAllTracks(trks.map(adaptTrack));
-      } catch {
+      } catch (err: any) {
         // Track fetch failure shouldn't completely break playlist view
       }
       await refreshPlaylists();
@@ -59,7 +59,7 @@ export default function PlaylistsPage() {
       await playlistsAPI.createPlaylist(name);
       await refreshPlaylists();
       setName('');
-    } catch {
+    } catch (err: any) {
       alert('Backend offline. Cannot create playlist.');
     }
   };
@@ -71,7 +71,7 @@ export default function PlaylistsPage() {
     try {
       await playlistsAPI.updatePlaylist(plId, { title: newName.trim() } as any);
       await refreshPlaylists();
-    } catch {
+    } catch (err: any) {
       alert('Backend offline. Cannot rename playlist.');
     }
   };
@@ -81,7 +81,7 @@ export default function PlaylistsPage() {
     try {
       await playlistsAPI.deletePlaylist(plId);
       await refreshPlaylists();
-    } catch {
+    } catch (err: any) {
       alert('Backend offline. Cannot delete playlist.');
     }
   };
@@ -90,7 +90,7 @@ export default function PlaylistsPage() {
     try {
       await playlistsAPI.removeTrack(plId, trackId);
       await refreshPlaylists();
-    } catch {
+    } catch (err: any) {
       alert('Backend offline. Cannot remove track from playlist.');
     }
   };

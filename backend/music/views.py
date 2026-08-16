@@ -5,10 +5,10 @@ from django.utils import timezone
 from rest_framework import generics, status, viewsets
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated, IsAuthenticatedOrReadOnly
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.parsers import MultiPartParser, FormParser
 from django.shortcuts import get_object_or_404
-from django.http import HttpResponseRedirect
+from django.http import HttpResponseRedirect, FileResponse, Http404
 from rest_framework.exceptions import PermissionDenied
 from notifications.models import Notification
 
@@ -54,7 +54,7 @@ class TrackViewSet(viewsets.ModelViewSet):
             return [IsAuthenticated(), IsApprovedArtist()]
         elif self.action in ['update', 'partial_update', 'destroy']:
             return [IsAuthenticated(), IsOwner()]
-        return [IsAuthenticatedOrReadOnly()]
+        return [IsAuthenticated()]
 
     def get_queryset(self):
         qs = super().get_queryset()
@@ -108,7 +108,8 @@ class TrackStreamView(APIView):
         # Check daily limit
         daily_limit = DAILY_STREAM_LIMITS.get(tier)
         if daily_limit is not None:
-            today = date.today()
+            from subscriptions.utils import get_current_time
+            today = get_current_time().date()
             today_count = StreamLog.objects.filter(
                 user=user,
                 streamed_at__date=today,
@@ -126,9 +127,9 @@ class TrackStreamView(APIView):
         track.total_streams = F('total_streams') + 1
         track.save(update_fields=['total_streams'])
 
-        # Unique listener counter logic (if needed in model, but we fetch directly from DB now)
-        # We can safely increment listeners_count just to keep the old field accurate
-        if not StreamLog.objects.filter(user=user, track=track).exclude(id=StreamLog.objects.latest('id').id).exists():
+        # Unique listener counter logic
+        is_first_stream = StreamLog.objects.filter(user=user, track=track).count() == 1
+        if is_first_stream:
             track.listeners_count = F('listeners_count') + 1
             track.save(update_fields=['listeners_count'])
 
@@ -165,8 +166,66 @@ class TrackDownloadView(APIView):
         if not track.audio_file:
             return Response({'detail': 'No audio file available for this track.'}, status=status.HTTP_404_NOT_FOUND)
 
-        # Return redirect to media URL
-        return HttpResponseRedirect(track.audio_file.url)
+        # Serve file directly
+        return FileResponse(track.audio_file.open(), as_attachment=True, filename=f"{track.title}.mp3")
+
+class TrackPlayView(APIView):
+    """GET /api/music/tracks/<id>/play/ — Playback track with limits."""
+    
+    from rest_framework.permissions import AllowAny
+    permission_classes = [AllowAny]
+    
+    # We must allow unauthenticated requests briefly so we can parse the token from query param
+    # because <audio> tags do not send Authorization headers.
+    
+    def get(self, request, pk):
+        from rest_framework_simplejwt.authentication import JWTAuthentication
+        from rest_framework.exceptions import AuthenticationFailed
+        
+        # Authenticate via query param for audio streams
+        token = request.GET.get('token')
+        if not token:
+            raise PermissionDenied('No token provided.')
+            
+        jwt_auth = JWTAuthentication()
+        try:
+            validated_token = jwt_auth.get_validated_token(token)
+            user = jwt_auth.get_user(validated_token)
+        except AuthenticationFailed:
+            raise PermissionDenied('Invalid token.')
+            
+        track = get_object_or_404(Track, pk=pk)
+        
+        tier = 'BASIC'
+        is_gold = False
+        if hasattr(user, 'subscription'):
+            sub = user.subscription
+            if sub and sub.is_active and sub.plan:
+                from subscriptions.utils import get_current_time
+                if sub.expires_at > get_current_time():
+                    tier = sub.plan.tier
+                    if tier == 'GOLD':
+                        is_gold = True
+
+        if track.is_early_access and track.artist != user and not is_gold:
+            raise PermissionDenied('This VIP track is strictly available to Gold subscribers.')
+
+        daily_limit = DAILY_STREAM_LIMITS.get(tier)
+        if daily_limit is not None:
+            from subscriptions.utils import get_current_time
+            today = get_current_time().date()
+            today_count = StreamLog.objects.filter(
+                user=user,
+                streamed_at__date=today,
+            ).count()
+            if today_count >= daily_limit:
+                # 429 prevents audio playback in browser
+                return Response('Daily limit reached', status=status.HTTP_429_TOO_MANY_REQUESTS)
+
+        if not track.audio_file:
+            raise Http404('No audio file.')
+
+        return FileResponse(track.audio_file.open())
 
 
 # ---------------------------------------------------------------------------
@@ -199,7 +258,7 @@ class AlbumViewSet(viewsets.ModelViewSet):
             return [IsAuthenticated(), IsApprovedArtist()]
         elif self.action in ['update', 'partial_update', 'destroy']:
             return [IsAuthenticated(), IsOwner()]
-        return [IsAuthenticatedOrReadOnly()]
+        return [IsAuthenticated()]
 
     def perform_create(self, serializer):
         album = serializer.save(artist=self.request.user)

@@ -341,14 +341,14 @@ export const playlistsAPI = {
   },
 
   addTrack: async (playlistId: string | number, trackId: string | number, position = 0) => {
-    return apiCall(`/playlists/${playlistId}/add-track/`, {
+    return apiCall(`/playlists/${playlistId}/tracks/`, {
       method: 'POST',
       body: JSON.stringify({ track_id: trackId, position }),
     });
   },
 
   removeTrack: async (playlistId: string | number, trackId: string | number) => {
-    return apiCall(`/playlists/${playlistId}/remove-track/${trackId}/`, { method: 'DELETE' });
+    return apiCall(`/playlists/${playlistId}/tracks/${trackId}/`, { method: 'DELETE' });
   },
 };
 
@@ -384,13 +384,16 @@ export const supportAPI = {
   },
 
   approveArtist: async (userId: string | number) => {
-    return apiCall(`/support/artist-requests/${userId}/approve/`, { method: 'POST' });
+    return apiCall(`/support/artist-requests/${userId}/`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status: 'APPROVED' }),
+    });
   },
 
   rejectArtist: async (userId: string | number, reason: string) => {
-    return apiCall(`/support/artist-requests/${userId}/reject/`, {
-      method: 'POST',
-      body: JSON.stringify({ reason }),
+    return apiCall(`/support/artist-requests/${userId}/`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status: 'REJECTED', reason }),
     });
   },
 
@@ -412,7 +415,7 @@ export const subscriptionsAPI = {
   },
 
   updatePlanPrice: async (id: number, price: number) => {
-    return apiCall(`/subscriptions/plans/${id}/price/`, {
+    return apiCall(`/subscriptions/plans/${id}/`, {
       method: 'PATCH',
       body: JSON.stringify({ price }),
     });
@@ -441,7 +444,7 @@ export const subscriptionsAPI = {
   },
 
   advanceTime: async (days: number) => {
-    return apiCall('/subscriptions/advance-time/', {
+    return apiCall('/subscriptions/time-offsets/', {
       method: 'POST',
       body: JSON.stringify({ days }),
     });

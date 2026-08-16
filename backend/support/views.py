@@ -59,6 +59,13 @@ class TicketDetailView(generics.RetrieveUpdateAPIView):
             return Ticket.objects.all()
         return Ticket.objects.filter(user=user)
 
+    def perform_update(self, serializer):
+        user = self.request.user
+        if user.role not in ('SUPPORT', 'ADMIN'):
+            for field in ['status', 'priority', 'assigned_to']:
+                serializer.validated_data.pop(field, None)
+        serializer.save()
+
 
 class TicketMessageCreateView(generics.CreateAPIView):
     """POST /api/support/tickets/<ticket_id>/messages/ — Add a message to a ticket."""
@@ -87,27 +94,24 @@ class PendingArtistListView(generics.ListAPIView):
     queryset = User.objects.filter(role='ARTIST', artist_status='PENDING')
 
 
-class ArtistApproveView(APIView):
-    """POST /api/support/artist-requests/<id>/approve/ — Approve an artist."""
+class ArtistStatusUpdateView(APIView):
+    """PATCH /api/support/artist-requests/<id>/ — Approve or reject an artist."""
 
     permission_classes = [IsSupportOrAdmin]
 
-    def post(self, request, pk):
+    def patch(self, request, pk):
         user = get_object_or_404(User, pk=pk, role='ARTIST', artist_status='PENDING')
-        user.artist_status = User.ArtistStatus.APPROVED
-        user.save(update_fields=['artist_status'])
-        return Response({'detail': f'Artist {user.display_name or user.username} approved.'})
-
-
-class ArtistRejectView(APIView):
-    """POST /api/support/artist-requests/<id>/reject/ — Reject an artist."""
-
-    permission_classes = [IsSupportOrAdmin]
-
-    def post(self, request, pk):
-        user = get_object_or_404(User, pk=pk, role='ARTIST', artist_status='PENDING')
+        status_req = request.data.get('status')
         reason = request.data.get('reason', '')
-        user.artist_status = User.ArtistStatus.REJECTED
-        user.rejection_reason = reason
-        user.save(update_fields=['artist_status', 'rejection_reason'])
-        return Response({'detail': f'Artist {user.display_name or user.username} rejected.'})
+        
+        if status_req == 'APPROVED':
+            user.artist_status = User.ArtistStatus.APPROVED
+            user.save(update_fields=['artist_status'])
+            return Response({'detail': f'Artist {user.display_name or user.username} approved.'})
+        elif status_req == 'REJECTED':
+            user.artist_status = User.ArtistStatus.REJECTED
+            user.rejection_reason = reason
+            user.save(update_fields=['artist_status', 'rejection_reason'])
+            return Response({'detail': f'Artist {user.display_name or user.username} rejected.'})
+        
+        return Response({'detail': 'Invalid status provided.'}, status=400)

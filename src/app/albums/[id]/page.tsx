@@ -32,8 +32,8 @@ export default function AlbumDetailPage() {
         const trks = (res as any).results || (Array.isArray(res) ? res : []);
         setTracks(trks.map(adaptTrack));
         setBackendOffline(false);
-      } catch {
-        setBackendOffline(true);
+      } catch (err: any) {
+        if (err?.message?.includes("fetch") || err?.message?.includes("Network")) setBackendOffline(true);
       }
     };
     load();

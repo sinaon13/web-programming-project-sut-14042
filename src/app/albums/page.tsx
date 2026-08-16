@@ -19,8 +19,8 @@ export default function AlbumsArchivePage() {
         const albs = (res as any).results || (Array.isArray(res) ? res : []);
         setAlbums(albs.map(adaptAlbum));
         setBackendOffline(false);
-      } catch {
-        setBackendOffline(true);
+      } catch (err: any) {
+        if (err?.message?.includes("fetch") || err?.message?.includes("Network")) setBackendOffline(true);
       }
     };
     load();

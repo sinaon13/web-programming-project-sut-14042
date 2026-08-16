@@ -85,7 +85,7 @@ export default function LoginPage() {
                   await authAPI.requestPasswordReset(forgotEmail);
                   setForgotMsg('Recovery email sent!');
                   setTimeout(() => setShowForgot(false), 2000);
-                } catch {
+                } catch (err: any) {
                   alert('Failed to send recovery email. Is backend online?');
                 } finally {
                   setForgotLoading(false);

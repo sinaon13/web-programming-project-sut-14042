@@ -35,8 +35,8 @@ export default function ArtistPortalPage() {
         const allTracks = ((trRes as any).results || (Array.isArray(trRes) ? trRes : [])).map(adaptTrack);
         setMyTracks(allTracks.filter((tItem: Track) => tItem.artistId === currentUser.id));
         setBackendOffline(false);
-      } catch {
-        setBackendOffline(true);
+      } catch (err: any) {
+        if (err?.message?.includes("fetch") || err?.message?.includes("Network")) setBackendOffline(true);
       }
     };
     load();
@@ -150,7 +150,7 @@ export default function ArtistPortalPage() {
       await authAPI.updateMe({ bio });
       updateUser({ bio });
       alert('Biography updated successfully!');
-    } catch {
+    } catch (err: any) {
       alert('Failed to update bio. Is the backend offline?');
     }
   };

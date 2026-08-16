@@ -54,9 +54,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setCurrentUser(adapted);
           setBackendOnline(true);
         })
-        .catch(() => {
-          // Token exists but backend unreachable — clear stale session
-          setBackendOnline(false);
+        .catch((err: any) => {
+          if (err?.message?.includes('fetch') || err?.message?.includes('Network')) {
+            setBackendOnline(false);
+          } else {
+            setBackendOnline(true);
+            logout(); // Clear stale session properly
+          }
         });
     }
   }, []);

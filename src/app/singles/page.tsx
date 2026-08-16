@@ -25,8 +25,8 @@ export default function SinglesArchivePage() {
         const adapted = trks.map(adaptTrack);
         setSingles(adapted.filter((tItem: Track) => tItem.releaseType === 'SINGLE' || !tItem.albumId));
         setBackendOffline(false);
-      } catch {
-        setBackendOffline(true);
+      } catch (err: any) {
+        if (err?.message?.includes("fetch") || err?.message?.includes("Network")) setBackendOffline(true);
       }
     };
     load();

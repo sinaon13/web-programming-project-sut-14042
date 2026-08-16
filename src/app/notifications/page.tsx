@@ -23,8 +23,8 @@ export default function NotificationsPage() {
         const results = (res as any).results || (Array.isArray(res) ? res : []);
         setNotifs(results.map(adaptNotification));
         setBackendOffline(false);
-      } catch {
-        setBackendOffline(true);
+      } catch (err: any) {
+        if (err?.message?.includes("fetch") || err?.message?.includes("Network")) setBackendOffline(true);
       }
     };
     load();
@@ -37,7 +37,7 @@ export default function NotificationsPage() {
       const results = (res as any).results || (Array.isArray(res) ? res : []);
       setNotifs(results.map(adaptNotification));
       setBackendOffline(false);
-    } catch {
+    } catch (err: any) {
       alert('Backend offline. Cannot mark notifications as read.');
     }
   };
@@ -49,7 +49,7 @@ export default function NotificationsPage() {
       const results = (res as any).results || (Array.isArray(res) ? res : []);
       setNotifs(results.map(adaptNotification));
       setBackendOffline(false);
-    } catch {
+    } catch (err: any) {
       alert('Backend offline. Cannot mark notification as read.');
     }
   };
@@ -58,7 +58,7 @@ export default function NotificationsPage() {
     try {
       await notificationsAPI.deleteNotification(id);
       setNotifs(notifs.filter(n => n.id !== id));
-    } catch {
+    } catch (err: any) {
       alert('Error deleting notification.');
     }
   };

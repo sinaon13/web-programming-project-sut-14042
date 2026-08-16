@@ -48,8 +48,8 @@ function SettingsContent() {
           GOLD: gold?.id,
         });
         setBackendOffline(false);
-      } catch {
-        setBackendOffline(true);
+      } catch (err: any) {
+        if (err?.message?.includes("fetch") || err?.message?.includes("Network")) setBackendOffline(true);
       }
     };
     load();
@@ -130,7 +130,7 @@ function SettingsContent() {
         notifications_enabled: notifNewReleases || notifExpiration || notifEmail
       });
       alert('✅ Platform preferences and notification limitations saved successfully!');
-    } catch {
+    } catch (err: any) {
       alert('Failed to save preferences. Is the backend online?');
     }
   };
@@ -143,7 +143,7 @@ function SettingsContent() {
       await authAPI.deleteAccount();
       alert('✅ Account and all associated data deleted permanently.');
       logout();
-    } catch {
+    } catch (err: any) {
       alert('Failed to delete account. Is the backend offline?');
     }
   };

@@ -2,6 +2,16 @@ from django.db import models
 from django.conf import settings
 
 
+class SystemSettings(models.Model):
+    """Singleton model for global application settings, like time offsets."""
+    time_offset_days = models.IntegerField(default=0)
+
+    class Meta:
+        verbose_name_plural = "System Settings"
+
+    def __str__(self):
+        return f"System Settings (Offset: {self.time_offset_days} days)"
+
 class SubscriptionPlan(models.Model):
     """Available subscription tiers."""
 

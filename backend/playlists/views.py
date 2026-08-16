@@ -96,8 +96,8 @@ class PlaylistDetailView(generics.RetrieveUpdateDestroyAPIView):
         instance.delete()
 
 
-class PlaylistAddTrackView(APIView):
-    """POST /api/playlists/<int:pk>/add-track/ — Add a track to a playlist."""
+class PlaylistTracksView(APIView):
+    """POST /api/playlists/<int:pk>/tracks/ — Add a track to a playlist."""
 
     permission_classes = [IsAuthenticated]
 
@@ -121,8 +121,8 @@ class PlaylistAddTrackView(APIView):
         return Response({'detail': 'Track added to playlist.'}, status=status.HTTP_201_CREATED)
 
 
-class PlaylistRemoveTrackView(APIView):
-    """DELETE /api/playlists/<int:pk>/remove-track/<int:track_id>/ — Remove a track."""
+class PlaylistTrackDetailView(APIView):
+    """DELETE /api/playlists/<int:pk>/tracks/<int:track_id>/ — Remove a track."""
 
     permission_classes = [IsAuthenticated]
 

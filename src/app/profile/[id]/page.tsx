@@ -24,7 +24,7 @@ export default function ProfilePage() {
       const updatedUser = await authAPI.updateAvatar(file);
       updateUser({ avatar: updatedUser.avatar });
       alert('✅ Avatar updated successfully!');
-    } catch {
+    } catch (err: any) {
       alert('Failed to update avatar. Is backend running?');
     }
   };

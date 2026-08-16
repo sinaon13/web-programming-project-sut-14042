@@ -7,7 +7,7 @@
  */
 
 import { Track, Album, Playlist, Ticket, AppNotification, User } from './types';
-import { BASE_HOST } from './api';
+import { BASE_HOST, BASE_URL } from './api';
 
 // ---------------------------------------------------------------------------
 // Track Adapter
@@ -25,12 +25,8 @@ export function adaptTrack(raw: any): Track {
     coverUrl: (raw.cover || raw.coverUrl) 
       ? ((raw.cover || raw.coverUrl).startsWith('/media/') ? `${BASE_HOST}${raw.cover || raw.coverUrl}` : (raw.cover || raw.coverUrl))
       : 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=300',
-    audioUrl: (raw.audio_file || raw.audioUrl)
-      ? ((raw.audio_file || raw.audioUrl).startsWith('/media/') ? `${BASE_HOST}${raw.audio_file || raw.audioUrl}` : (raw.audio_file || raw.audioUrl))
-      : 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3',
-    audioUrl128: (raw.audio_file_128 || raw.audioUrl128)
-      ? ((raw.audio_file_128 || raw.audioUrl128).startsWith('/media/') ? `${BASE_HOST}${raw.audio_file_128 || raw.audioUrl128}` : (raw.audio_file_128 || raw.audioUrl128))
-      : '',
+    audioUrl: raw.id ? `${BASE_URL}/music/tracks/${raw.id}/play/` : '',
+    audioUrl128: raw.id ? `${BASE_URL}/music/tracks/${raw.id}/play/` : '',
     listenersCount: raw.listeners_count ?? raw.listenersCount ?? 0,
     totalStreams: raw.total_streams ?? raw.totalStreams ?? 0,
     releaseDate: raw.release_date || raw.releaseDate || '',

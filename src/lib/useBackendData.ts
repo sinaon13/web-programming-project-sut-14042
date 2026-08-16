@@ -27,9 +27,10 @@ export function useBackendData<T>(
       setData(result);
       setBackendOffline(false);
       // Cache to localStorage for offline fallback (removed)
-    } catch {
-      // Backend unreachable — load from localStorage cache (removed)
-      setBackendOffline(true);
+    } catch (err: any) {
+      if (err?.message?.includes("fetch") || err?.message?.includes("Network")) {
+        setBackendOffline(true);
+      }
     } finally {
       setLoading(false);
     }

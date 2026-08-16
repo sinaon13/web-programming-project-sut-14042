@@ -24,8 +24,8 @@ export default function SupportTicketsPage() {
         const results = (res as any).results || (Array.isArray(res) ? res : []);
         setTickets(results.map(adaptTicket));
         setBackendOffline(false);
-      } catch {
-        setBackendOffline(true);
+      } catch (err: any) {
+        if (err?.message?.includes("fetch") || err?.message?.includes("Network")) setBackendOffline(true);
       }
     };
     load();
@@ -44,7 +44,7 @@ export default function SupportTicketsPage() {
       setSubject(''); setMessage('');
       setBackendOffline(false);
       alert('✅ Support ticket submitted successfully! Staff has been notified.');
-    } catch {
+    } catch (err: any) {
       alert('Backend offline. Cannot submit ticket.');
     }
   };

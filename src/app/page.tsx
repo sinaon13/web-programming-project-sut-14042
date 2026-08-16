@@ -31,8 +31,8 @@ export default function HomePage() {
         const res = await musicAPI.getTracks();
         const trks = (res as any).results || (Array.isArray(res) ? res : []);
         setTracks(trks.map(adaptTrack));
-      } catch {
-        offline = true;
+      } catch (err: any) {
+        if (err?.message?.includes("fetch") || err?.message?.includes("Network")) offline = true;
       }
 
       // Albums
@@ -40,8 +40,8 @@ export default function HomePage() {
         const res = await musicAPI.getAlbums();
         const albs = (res as any).results || (Array.isArray(res) ? res : []);
         setAlbums(albs.map(adaptAlbum));
-      } catch {
-        offline = true;
+      } catch (err: any) {
+        if (err?.message?.includes("fetch") || err?.message?.includes("Network")) offline = true;
       }
 
       // Playlists
@@ -63,8 +63,8 @@ export default function HomePage() {
         } else {
           setRecentPlaylists([]);
         }
-      } catch {
-        offline = true;
+      } catch (err: any) {
+        if (err?.message?.includes("fetch") || err?.message?.includes("Network")) offline = true;
       }
 
       setBackendOffline(offline);
