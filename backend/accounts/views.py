@@ -2,6 +2,7 @@ from rest_framework import generics, status
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from django.contrib.auth import get_user_model
 from django.shortcuts import get_object_or_404
 
@@ -15,6 +16,21 @@ from .serializers import (
 )
 
 User = get_user_model()
+
+
+class PasswordResetRequestView(APIView):
+    """POST /api/accounts/password-reset/ — Mock password reset request."""
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        email = request.data.get('email')
+        if not email:
+            return Response({'detail': 'Email is required.'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        # In a real app, send an email here.
+        # We mock this by returning success.
+        return Response({'detail': 'Password recovery email sent successfully.'}, status=status.HTTP_200_OK)
+
 
 
 class RegisterView(generics.CreateAPIView):
@@ -43,6 +59,24 @@ class ArtistRegisterView(generics.CreateAPIView):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
+        
+        # Send notification to admin and support staff
+        try:
+            from notifications.models import Notification
+            staff_users = User.objects.filter(role__in=[User.Role.ADMIN, User.Role.SUPPORT])
+            notifications = [
+                Notification(
+                    recipient=staff,
+                    title='New Artist Registration',
+                    message=f'User {user.display_name or user.username} has registered as an artist and is awaiting approval.',
+                    notification_type=Notification.Type.SUPPORT,
+                    link='/admin'
+                ) for staff in staff_users
+            ]
+            Notification.objects.bulk_create(notifications)
+        except Exception:
+            pass
+            
         return Response(
             {
                 'detail': 'Artist account created. Awaiting admin/support approval.',
@@ -60,6 +94,7 @@ class ProfileView(generics.RetrieveUpdateDestroyAPIView):
 
     serializer_class = UserProfileSerializer
     permission_classes = [IsAuthenticated]
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
 
     def get_object(self):
         return self.request.user

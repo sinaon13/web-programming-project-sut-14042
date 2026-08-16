@@ -79,6 +79,7 @@ class UserProfileSerializer(serializers.ModelSerializer):
 
     followers_count = serializers.SerializerMethodField()
     following_count = serializers.SerializerMethodField()
+    tier = serializers.SerializerMethodField()
 
     class Meta:
         model = User
@@ -87,11 +88,11 @@ class UserProfileSerializer(serializers.ModelSerializer):
             'avatar', 'birth_date', 'gender', 'bio', 'portfolio_url',
             'artist_status', 'rejection_reason', 'is_verified',
             'followers_count', 'following_count',
-            'date_joined',
+            'date_joined', 'tier',
         ]
         read_only_fields = [
             'id', 'email', 'role', 'artist_status', 'rejection_reason',
-            'is_verified', 'date_joined',
+            'is_verified', 'date_joined', 'tier',
         ]
 
     def get_followers_count(self, obj):
@@ -99,6 +100,25 @@ class UserProfileSerializer(serializers.ModelSerializer):
 
     def get_following_count(self, obj):
         return obj.following.count()
+
+    def get_tier(self, obj):
+        if hasattr(obj, 'subscription'):
+            sub = obj.subscription
+            if sub and sub.is_active and sub.plan:
+                return sub.plan.tier
+        return 'BASIC'
+
+    def validate_avatar(self, value):
+        user = self.context['request'].user
+        tier = 'BASIC'
+        if hasattr(user, 'subscription'):
+            sub = user.subscription
+            if sub and sub.is_active and sub.plan:
+                tier = sub.plan.tier
+        
+        if tier == 'BASIC':
+            raise serializers.ValidationError('Avatar upload is restricted on Free Basic tier. Please upgrade to Silver or Gold.')
+        return value
 
 
 class PublicUserSerializer(serializers.ModelSerializer):

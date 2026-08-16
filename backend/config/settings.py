@@ -43,6 +43,7 @@ INSTALLED_APPS = [
     'notifications',
     'support',
     'reports',
+    'drf_spectacular',
 ]
 
 MIDDLEWARE = [
@@ -142,6 +143,20 @@ REST_FRAMEWORK = {
         'rest_framework.filters.SearchFilter',
         'rest_framework.filters.OrderingFilter',
     ],
+    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
+}
+
+
+# ---------------------------------------------------------------------------
+# Spectacular OpenAPI
+# ---------------------------------------------------------------------------
+
+SPECTACULAR_SETTINGS = {
+    'TITLE': 'Spotify Clone API',
+    'DESCRIPTION': 'API documentation for the Spotify Clone backend.',
+    'VERSION': '1.0.0',
+    'SERVE_INCLUDE_SCHEMA': False,
+    # OTHER SETTINGS
 }
 
 

@@ -6,6 +6,7 @@ from .views import (
     PublicUserView,
     FollowView,
     UserPreferencesView,
+    PasswordResetRequestView,
 )
 
 urlpatterns = [
@@ -15,4 +16,5 @@ urlpatterns = [
     path('users/<int:pk>/', PublicUserView.as_view(), name='public-user'),
     path('users/<int:pk>/follow/', FollowView.as_view(), name='follow'),
     path('preferences/', UserPreferencesView.as_view(), name='preferences'),
+    path('password-reset/', PasswordResetRequestView.as_view(), name='password-reset'),
 ]

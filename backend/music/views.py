@@ -1,6 +1,6 @@
 from datetime import date
 
-from django.db.models import F
+from django.db.models import F, Q
 from django.utils import timezone
 from rest_framework import generics, status
 from rest_framework.views import APIView
@@ -56,8 +56,19 @@ class TrackListCreateView(generics.ListCreateAPIView):
         qs = Track.objects.select_related('artist', 'album').all()
         # Filter out early-access tracks for non-premium users
         user = self.request.user
-        if not user.is_authenticated:
-            qs = qs.filter(is_early_access=False)
+        
+        tier = 'BASIC'
+        if user.is_authenticated and hasattr(user, 'subscription'):
+            sub = user.subscription
+            if sub and sub.is_active and sub.plan:
+                tier = sub.plan.tier
+                
+        if not user.is_authenticated or tier in ['BASIC', 'SILVER']:
+            # But the artist themselves can see their own tracks even if they are basic/silver
+            if user.is_authenticated:
+                qs = qs.filter(Q(is_early_access=False) | Q(artist=user))
+            else:
+                qs = qs.filter(is_early_access=False)
         return qs
 
 
@@ -129,6 +140,34 @@ class TrackStreamView(APIView):
             Track.objects.filter(pk=pk).update(listeners_count=F('listeners_count') + 1)
 
         return Response({'detail': 'Stream logged successfully.'})
+
+
+class TrackDownloadView(APIView):
+    """GET /api/music/tracks/<id>/download/ — Download track (Silver/Gold only)."""
+    
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, pk):
+        track = get_object_or_404(Track, pk=pk)
+        user = request.user
+
+        tier = 'BASIC'
+        if hasattr(user, 'subscription'):
+            sub = user.subscription
+            if sub and sub.is_active and sub.plan:
+                tier = sub.plan.tier
+
+        # Allow artist to download own track regardless of tier
+        if tier == 'BASIC' and track.artist != user:
+            from rest_framework.exceptions import PermissionDenied
+            raise PermissionDenied('Downloading tracks is restricted to Silver and Gold subscribers.')
+
+        if not track.audio_file:
+            return Response({'detail': 'No audio file available for this track.'}, status=status.HTTP_404_NOT_FOUND)
+
+        # Return redirect to media URL
+        from django.http import HttpResponseRedirect
+        return HttpResponseRedirect(track.audio_file.url)
 
 
 # ---------------------------------------------------------------------------
