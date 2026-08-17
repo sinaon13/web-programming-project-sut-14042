@@ -1,5 +1,6 @@
 'use client';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { Track } from '@/lib/types';
 import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
@@ -13,6 +14,11 @@ export const DownloadButton: React.FC<{ track: Track }> = ({ track }) => {
   const { showToast } = useToast();
   const { t } = useLanguage();
   const [showModal, setShowModal] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const handleDownload = async (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -38,30 +44,46 @@ export const DownloadButton: React.FC<{ track: Track }> = ({ track }) => {
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
       </button>
 
-      {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 cursor-default" onClick={(e) => { e.stopPropagation(); setShowModal(false); }}>
-          <div className="bg-neutral-900 border border-neutral-800 rounded-xl p-6 max-w-sm w-full text-center shadow-2xl animate-in fade-in zoom-in duration-200" onClick={(e) => e.stopPropagation()}>
-            <div className="text-4xl mb-4">🔒</div>
+      {showModal && mounted && createPortal(
+        <div 
+          className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 cursor-default" 
+          onClick={(e) => { e.stopPropagation(); setShowModal(false); }}
+        >
+          <div 
+            className="bg-neutral-900 border border-neutral-700 rounded-2xl p-6 max-w-sm w-full text-center shadow-2xl animate-in fade-in zoom-in duration-200" 
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="text-4xl mb-3">🔒</div>
             <h3 className="text-lg font-bold text-white mb-2">{t.premiumFeature || 'Premium Feature'}</h3>
-            <p className="text-sm text-neutral-400 mb-6 leading-relaxed">
+            <p className="text-sm text-neutral-300 mb-6 leading-relaxed">
               {t.downloadBasicRestricted || 'Song downloading is strictly exclusive to Silver and Gold VIP subscribers! Would you like to upgrade your tier now?'}
             </p>
-            <div className="flex flex-col space-y-2">
+            <div className="flex flex-col space-y-2.5">
               <button
-                onClick={(e) => { e.stopPropagation(); router.push('/settings'); }}
-                className="w-full py-2.5 bg-amber-500 hover:bg-amber-400 text-black font-bold rounded-lg transition"
+                type="button"
+                onClick={(e) => { 
+                  e.stopPropagation(); 
+                  setShowModal(false); 
+                  router.push('/settings'); 
+                }}
+                className="w-full py-2.5 bg-amber-500 hover:bg-amber-400 active:scale-[0.98] text-black font-bold rounded-xl transition shadow-lg cursor-pointer"
               >
                 {t.upgradeGold || 'Upgrade to VIP'}
               </button>
               <button
-                onClick={(e) => { e.stopPropagation(); setShowModal(false); }}
-                className="w-full py-2.5 bg-neutral-800 hover:bg-neutral-700 text-white font-medium rounded-lg transition"
+                type="button"
+                onClick={(e) => { 
+                  e.stopPropagation(); 
+                  setShowModal(false); 
+                }}
+                className="w-full py-2.5 bg-neutral-800 hover:bg-neutral-700 active:scale-[0.98] text-white font-medium rounded-xl transition border border-neutral-700 cursor-pointer"
               >
                 {t.cancel || 'Cancel'}
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </>
   );

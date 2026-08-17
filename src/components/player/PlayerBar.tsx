@@ -22,6 +22,7 @@ export const PlayerBar: React.FC = () => {
   const seekTimeout = React.useRef<NodeJS.Timeout | null>(null);
   const clearLocalTimeout = React.useRef<NodeJS.Timeout | null>(null);
 
+  const effectiveDuration = Math.max(duration || 0, progress || 0);
   const displayProgress = localProgress !== null ? localProgress : progress;
 
   const handleSliderChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -50,10 +51,8 @@ export const PlayerBar: React.FC = () => {
 
   if (!currentTrack) return null;
 
-  
-
   const formatTime = (time: number) => {
-    if (isNaN(time)) return '0:00';
+    if (isNaN(time) || !isFinite(time) || time < 0) return '0:00';
     const mins = Math.floor(time / 60);
     const secs = Math.floor(time % 60);
     return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
@@ -64,11 +63,19 @@ export const PlayerBar: React.FC = () => {
 
   return (
     <>
-      <div className="fixed bottom-0 left-0 right-0 border-t border-neutral-800 p-3 px-6 flex flex-col md:flex-row items-center justify-between z-40 shadow-2xl" style={{ ...accentStyle, background: accentColor ? `linear-gradient(135deg, color-mix(in srgb, ${accentColor} 30%, transparent) 0%, #171717 50%, #171717 100%)` : '#171717' }}>
+      <div 
+        className="fixed bottom-0 left-0 right-0 border-t border-neutral-800 p-3 px-6 flex flex-col md:flex-row items-center justify-between z-40 shadow-2xl" 
+        style={{ ...accentStyle, background: accentColor ? `linear-gradient(135deg, color-mix(in srgb, ${accentColor} 30%, transparent) 0%, #171717 50%, #171717 100%)` : '#171717' }}
+      >
+        {/* Left: Track Metadata */}
         <div className="flex items-center justify-between w-full md:w-1/4 mb-2 md:mb-0">
           <div className="flex items-center space-x-3 truncate">
-            {/* Cover art with accent border synced to dominant color */}
-            <img src={currentTrack.coverUrl} alt="Cover" className="w-12 h-12 rounded object-cover flex-shrink-0" style={{ borderWidth: 2, borderStyle: 'solid', borderColor: accentColor }} />
+            <img 
+              src={currentTrack.coverUrl} 
+              alt="Cover" 
+              className="w-12 h-12 rounded object-cover flex-shrink-0" 
+              style={{ borderWidth: 2, borderStyle: 'solid', borderColor: accentColor }} 
+            />
             <div className="truncate px-2">
               <h4 className="text-sm font-bold text-white truncate">{currentTrack.title}</h4>
               <div className="text-xs text-neutral-400 truncate flex items-center gap-1">
@@ -85,20 +92,33 @@ export const PlayerBar: React.FC = () => {
             </div>
           </div>
 
-          <button onClick={() => setIsFullScreen(true)} className="md:hidden text-xs font-bold px-3 py-1.5 rounded border transition" style={{ backgroundColor: `${accentColor}20`, color: accentColor, borderColor: `${accentColor}50` }}>
+          <button 
+            onClick={() => setIsFullScreen(true)} 
+            className="md:hidden text-xs font-bold px-3 py-1.5 rounded border transition" 
+            style={{ backgroundColor: `${accentColor}20`, color: accentColor, borderColor: `${accentColor}50` }}
+          >
             {t.expandPlayer}
           </button>
         </div>
 
+        {/* Center: Controls & Slider */}
         <div className="flex flex-col items-center w-full md:w-2/4">
           <div className="flex items-center space-x-4 mb-2">
-            <button onClick={toggleShuffle} className={`p-1.5 transition rounded-full ${isShuffle ? 'bg-white/10' : 'text-neutral-400 hover:text-white hover:bg-white/5'}`} style={isShuffle ? { color: accentColor } : {}}>
+            <button 
+              onClick={toggleShuffle} 
+              className={`p-1.5 transition rounded-full ${isShuffle ? 'bg-white/10' : 'text-neutral-400 hover:text-white hover:bg-white/5'}`} 
+              style={isShuffle ? { color: accentColor } : {}}
+            >
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="16 3 21 3 21 8"></polyline><line x1="4" y1="20" x2="21" y2="3"></line><polyline points="21 16 21 21 16 21"></polyline><line x1="15" y1="15" x2="21" y2="21"></line><line x1="4" y1="4" x2="9" y2="9"></line></svg>
             </button>
             <button onClick={prevTrack} className="p-1.5 text-neutral-400 hover:text-white transition rounded-full hover:bg-white/5">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><polygon points="19 20 9 12 19 4 19 20"></polygon><line x1="5" y1="19" x2="5" y2="5" stroke="currentColor" strokeWidth="2" strokeLinecap="round"></line></svg>
             </button>
-            <button onClick={togglePlay} className="w-10 h-10 rounded-full flex items-center justify-center shadow-lg hover:scale-105 transition transform active:scale-95" style={{ backgroundColor: accentColor || '#1db954', color: '#000' }}>
+            <button 
+              onClick={togglePlay} 
+              className="w-10 h-10 rounded-full flex items-center justify-center shadow-lg hover:scale-105 transition transform active:scale-95 cursor-pointer" 
+              style={{ backgroundColor: accentColor || '#1db954', color: '#000' }}
+            >
               {isPlaying ? (
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>
               ) : (
@@ -108,17 +128,24 @@ export const PlayerBar: React.FC = () => {
             <button onClick={nextTrack} className="p-1.5 text-neutral-400 hover:text-white transition rounded-full hover:bg-white/5">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 4 15 12 5 20 5 4"></polygon><line x1="19" y1="5" x2="19" y2="19" stroke="currentColor" strokeWidth="2" strokeLinecap="round"></line></svg>
             </button>
-            <button onClick={toggleRepeat} className={`p-1.5 transition rounded-full flex items-center ${repeatMode !== 'OFF' ? 'bg-white/10' : 'text-neutral-400 hover:text-white hover:bg-white/5'}`} style={repeatMode !== 'OFF' ? { color: accentColor } : {}}>
+            <button 
+              onClick={toggleRepeat} 
+              className={`p-1.5 transition rounded-full flex items-center ${repeatMode !== 'OFF' ? 'bg-white/10' : 'text-neutral-400 hover:text-white hover:bg-white/5'}`} 
+              style={repeatMode !== 'OFF' ? { color: accentColor } : {}}
+            >
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="17 1 21 5 17 9"></polyline><path d="M3 11V9a4 4 0 0 1 4-4h14"></path><polyline points="7 23 3 19 7 15"></polyline><path d="M21 13v2a4 4 0 0 1-4 4H3"></path></svg>
               {repeatMode === 'TRACK' && <span className="absolute text-[8px] font-bold mt-0.5" style={{ marginLeft: '6px' }}>1</span>}
             </button>
-            <div className="ml-2 scale-90 opacity-80 hover:opacity-100 transition"><DownloadButton track={currentTrack} /></div>
+            <div className="ml-2 opacity-80 hover:opacity-100 transition"><DownloadButton track={currentTrack} /></div>
           </div>
 
           <div className="flex items-center space-x-2 w-full max-w-md">
-            <span className="text-[10px] text-neutral-400 w-8 text-center font-mono">{formatTime(progress)}</span>
+            <span className="text-[10px] text-neutral-400 w-8 text-center font-mono">{formatTime(displayProgress)}</span>
             <input
-              type="range" min="0" max={duration || 100} value={displayProgress}
+              type="range"
+              min="0"
+              max={effectiveDuration > 0 ? effectiveDuration : 100}
+              value={Math.min(displayProgress, effectiveDuration > 0 ? effectiveDuration : 100)}
               onChange={handleSliderChange}
               onPointerUp={handleSliderUp}
               onMouseUp={handleSliderUp}
@@ -126,12 +153,12 @@ export const PlayerBar: React.FC = () => {
               className="w-full h-1 bg-neutral-700 rounded-lg appearance-none cursor-pointer"
               style={{ accentColor }}
             />
-            <span className="text-[10px] text-neutral-400 w-8 text-center font-mono">{formatTime(duration)}</span>
+            <span className="text-[10px] text-neutral-400 w-8 text-center font-mono">{formatTime(effectiveDuration)}</span>
           </div>
         </div>
 
+        {/* Right: Audio options & tools */}
         <div className="hidden md:flex items-center justify-end space-x-2 w-1/4">
-          {/* Advanced Player Controls */}
           <button
             onClick={toggleCrossfade}
             title={crossfadeEnabled ? 'Crossfade: ON (5s)' : 'Crossfade: OFF'}
@@ -149,10 +176,18 @@ export const PlayerBar: React.FC = () => {
             <option value="LOW">128kbps</option>
             <option value="HIGH">320kbps</option>
           </select>
-          <button onClick={() => setIsFullScreen(true)} className="text-xs font-bold px-2.5 py-1 rounded border transition" style={{ backgroundColor: `${accentColor}20`, color: accentColor, borderColor: `${accentColor}50` }}>
+          <button 
+            onClick={() => setIsFullScreen(true)} 
+            className="text-xs font-bold px-2.5 py-1 rounded border transition" 
+            style={{ backgroundColor: `${accentColor}20`, color: accentColor, borderColor: `${accentColor}50` }}
+          >
             {t.expandPlayer}
           </button>
-          <button onClick={() => setShowQueue(!showQueue)} className={`text-xs px-2.5 py-1 rounded border font-bold transition flex items-center gap-1.5 ${showQueue ? 'text-black' : 'bg-neutral-800 text-neutral-300 hover:text-white border-neutral-700'}`} style={showQueue ? { backgroundColor: accentColor, borderColor: accentColor } : {}}>
+          <button 
+            onClick={() => setShowQueue(!showQueue)} 
+            className={`text-xs px-2.5 py-1 rounded border font-bold transition flex items-center gap-1.5 ${showQueue ? 'text-black' : 'bg-neutral-800 text-neutral-300 hover:text-white border-neutral-700'}`} 
+            style={showQueue ? { backgroundColor: accentColor, borderColor: accentColor } : {}}
+          >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="inline-block"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"></path></svg>
             {t.queue} ({queue.length})
           </button>
@@ -163,12 +198,13 @@ export const PlayerBar: React.FC = () => {
           <input
             type="range" min="0" max="1" step="0.05" value={volume}
             onChange={(e) => setVolume(parseFloat(e.target.value))}
-            className="w-20 h-1"
+            className="w-20 h-1 cursor-pointer"
             style={{ accentColor }}
           />
         </div>
       </div>
 
+      {/* Fullscreen Player */}
       {isFullScreen && (
         <div className="fixed inset-0 z-50 flex flex-col justify-between p-6 md:p-12 overflow-y-auto animate-fadeIn bg-neutral-950" style={{ background: accentColor ? `linear-gradient(to bottom, color-mix(in srgb, ${accentColor} 30%, transparent), #171717, #000)` : undefined }}>
           <div className="flex justify-between items-center w-full max-w-2xl mx-auto border-b border-neutral-800 pb-4">
@@ -186,9 +222,12 @@ export const PlayerBar: React.FC = () => {
             </Link>
 
             <div className="flex items-center space-x-2 w-full mb-6">
-              <span className="text-xs text-neutral-400 w-10 font-mono">{formatTime(progress)}</span>
+              <span className="text-xs text-neutral-400 w-10 font-mono">{formatTime(displayProgress)}</span>
               <input
-                type="range" min="0" max={duration || 100} value={displayProgress}
+                type="range" 
+                min="0" 
+                max={effectiveDuration > 0 ? effectiveDuration : 100} 
+                value={Math.min(displayProgress, effectiveDuration > 0 ? effectiveDuration : 100)}
                 onChange={handleSliderChange}
                 onPointerUp={handleSliderUp}
                 onMouseUp={handleSliderUp}
@@ -196,7 +235,7 @@ export const PlayerBar: React.FC = () => {
                 className="w-full h-1.5 bg-neutral-700 rounded-lg appearance-none cursor-pointer"
                 style={{ accentColor }}
               />
-              <span className="text-xs text-neutral-400 w-10 font-mono">{formatTime(duration)}</span>
+              <span className="text-xs text-neutral-400 w-10 font-mono">{formatTime(effectiveDuration)}</span>
             </div>
 
             <div className="flex items-center justify-center space-x-6 mb-8">
@@ -206,11 +245,11 @@ export const PlayerBar: React.FC = () => {
               <button onClick={prevTrack} className="p-3 text-neutral-300 hover:text-white transition rounded-full hover:bg-white/5">
                 <svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor"><polygon points="19 20 9 12 19 4 19 20"></polygon><line x1="5" y1="19" x2="5" y2="5" stroke="currentColor" strokeWidth="2" strokeLinecap="round"></line></svg>
               </button>
-              <button onClick={togglePlay} className="w-16 h-16 rounded-full flex items-center justify-center shadow-xl hover:scale-105 transition transform active:scale-95" style={{ backgroundColor: accentColor || '#1db954', color: '#000' }}>
+              <button onClick={togglePlay} className="w-16 h-16 rounded-full flex items-center justify-center shadow-xl hover:scale-105 transition transform active:scale-95 cursor-pointer" style={{ backgroundColor: accentColor || '#1db954', color: '#000' }}>
                 {isPlaying ? (
                   <svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>
                 ) : (
-                  <svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor" style={{ marginLeft: '4px' }}><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                  <svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor" style={{ marginLeft: '4px' }}><polygon points="5 3 19 12 5 20 5 4"></polygon></svg>
                 )}
               </button>
               <button onClick={nextTrack} className="p-3 text-neutral-300 hover:text-white transition rounded-full hover:bg-white/5">
@@ -244,7 +283,7 @@ export const PlayerBar: React.FC = () => {
                 <input
                   type="range" min="0" max="1" step="0.05" value={volume}
                   onChange={(e) => setVolume(parseFloat(e.target.value))}
-                  className="w-24 h-1"
+                  className="w-24 h-1 cursor-pointer"
                   style={{ accentColor }}
                 />
               </div>
@@ -265,6 +304,7 @@ export const PlayerBar: React.FC = () => {
         </div>
       )}
 
+      {/* Queue Drawer */}
       {showQueue && (
         <div className="fixed bottom-16 right-6 w-80 bg-neutral-900 border border-neutral-700 rounded-xl shadow-2xl p-4 z-50 text-left max-h-96 flex flex-col">
           <div className="flex justify-between items-center border-b border-neutral-800 pb-2 mb-3">
@@ -292,6 +332,7 @@ export const PlayerBar: React.FC = () => {
         </div>
       )}
 
+      {/* Lyrics Modal */}
       {showLyrics && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
           <div className="bg-neutral-900 border border-neutral-800 p-6 rounded-xl max-w-md w-full text-center shadow-2xl">

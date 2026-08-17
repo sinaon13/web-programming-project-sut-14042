@@ -10,6 +10,9 @@ services:
       - /app/.venv
     environment:
       - PYTHONUNBUFFERED=1
+      - DEBUG=True
+      - SECRET_KEY=django-insecure-docker-soundvault-key-2024
+      - ALLOWED_HOSTS=*
 
   frontend:
     build:
@@ -19,6 +22,6 @@ services:
       - "3000:3000"
     environment:
       - NODE_ENV=production
-      - NEXT_PUBLIC_API_URL=http://backend:8000/api
+      - NEXT_PUBLIC_API_URL=http://localhost:8000/api
     depends_on:
       - backend
