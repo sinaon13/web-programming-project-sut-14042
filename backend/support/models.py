@@ -7,6 +7,7 @@ class Ticket(models.Model):
 
     class Status(models.TextChoices):
         OPEN = 'OPEN', 'Open'
+        ANSWERED = 'ANSWERED', 'Answered'
         IN_PROGRESS = 'IN_PROGRESS', 'In Progress'
         RESOLVED = 'RESOLVED', 'Resolved'
         CLOSED = 'CLOSED', 'Closed'

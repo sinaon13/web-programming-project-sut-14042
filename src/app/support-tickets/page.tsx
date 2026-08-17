@@ -33,6 +33,17 @@ export default function SupportTicketsPage() {
 
   if (!currentUser) return null;
 
+  const handleReply = async (ticketId: string, text: string) => {
+    try {
+      await supportAPI.addMessage(ticketId, text);
+      const res = await supportAPI.getTickets();
+      const results = (res as any).results || (Array.isArray(res) ? res : []);
+      setTickets(results.map(adaptTicket));
+    } catch (err: any) {
+      console.error(err);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
@@ -79,6 +90,8 @@ export default function SupportTicketsPage() {
                   <span className="font-bold text-white text-sm">{tItem.subject}</span>
                 </div>
                 <div className="flex items-center gap-3">
+                  <span className="text-[11px] text-neutral-400">Priority: {tItem.priority}</span>
+                  {tItem.assignedTo && <span className="text-[11px] text-neutral-400">Assigned: {tItem.assignedTo}</span>}
                   <span className="text-[11px] text-neutral-400">{t.sentAt} {tItem.createdAt}</span>
                   <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded ${tItem.status === 'OPEN' ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30' : 'bg-green-500/20 text-green-400 border border-green-500/30'}`}>{tItem.status}</span>
                 </div>
@@ -90,6 +103,19 @@ export default function SupportTicketsPage() {
                   </div>
                 ))}
               </div>
+              
+              {tItem.status !== 'CLOSED' && (
+                <div className="mt-4 pt-4 border-t border-neutral-800 flex items-center space-x-2">
+                  <input type="text" id={`reply-${tItem.id}`} placeholder="Type your reply..." className="flex-1 p-2 bg-neutral-800 border border-neutral-700 rounded text-xs text-white" />
+                  <button onClick={() => {
+                    const el = document.getElementById(`reply-${tItem.id}`) as HTMLInputElement;
+                    if (el && el.value.trim()) {
+                      handleReply(tItem.id, el.value.trim());
+                      el.value = '';
+                    }
+                  }} className="px-4 py-2 bg-blue-500 hover:bg-blue-400 text-white font-bold rounded text-xs transition">Reply</button>
+                </div>
+              )}
             </div>
           ))}
         </div>

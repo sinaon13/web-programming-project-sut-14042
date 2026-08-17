@@ -21,12 +21,19 @@ class SubscriptionTests(TestCase):
             email='admin@test.com', username='admin1', password='Pass123456',
             role=User.Role.ADMIN,
         )
-        self.free_plan = SubscriptionPlan.objects.create(
-            name='Basic', tier='BASIC', price=0, duration_days=9999,
-            daily_stream_limit=60, max_playlists=6,
+        self.free_plan, _ = SubscriptionPlan.objects.get_or_create(
+            tier='BASIC',
+            defaults={
+                'name': 'Basic', 'price': 0, 'duration_days': 9999,
+                'daily_stream_limit': 60, 'max_playlists': 6,
+            }
         )
-        self.premium_plan = SubscriptionPlan.objects.create(
-            name='Gold', tier='GOLD', price=99000, duration_days=30,
+        self.premium_plan, _ = SubscriptionPlan.objects.get_or_create(
+            tier='GOLD',
+            defaults={
+                'name': 'Gold', 'price': 99000, 'duration_days': 30,
+                'daily_stream_limit': None, 'max_playlists': None,
+            }
         )
 
     # ---- Test 1: List plans ----
@@ -34,7 +41,7 @@ class SubscriptionTests(TestCase):
         self.client.force_authenticate(user=self.user)
         response = self.client.get('/api/subscriptions/plans/')
         self.assertEqual(response.status_code, http_status.HTTP_200_OK)
-        self.assertEqual(len(response.data['results']), 2)
+        self.assertEqual(len(response.data['results']), 3)
 
     # ---- Test 2: Purchase free plan activates immediately ----
     def test_purchase_free_plan(self):
@@ -90,7 +97,7 @@ class SubscriptionTests(TestCase):
     def test_admin_update_plan_price(self):
         self.client.force_authenticate(user=self.admin)
         response = self.client.patch(
-            f'/api/subscriptions/plans/{self.premium_plan.pk}/price/',
+            f'/api/subscriptions/plans/{self.premium_plan.pk}/',
             {'price': 149000},
         )
         self.assertEqual(response.status_code, http_status.HTTP_200_OK)
@@ -101,7 +108,7 @@ class SubscriptionTests(TestCase):
     def test_non_admin_cannot_update_price(self):
         self.client.force_authenticate(user=self.user)
         response = self.client.patch(
-            f'/api/subscriptions/plans/{self.premium_plan.pk}/price/',
-            {'price': 1},
+            f'/api/subscriptions/plans/{self.premium_plan.pk}/',
+            {'price': 149000},
         )
         self.assertEqual(response.status_code, http_status.HTTP_403_FORBIDDEN)

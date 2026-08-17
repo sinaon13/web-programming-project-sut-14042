@@ -22,8 +22,9 @@ const sampleTrack: Track = {
   audioUrl: '/audio/song.mp3',
   listenersCount: 100,
   totalStreams: 200,
-  releaseDate: '2026-05-01',
-  isEarlyAccess: true
+  releaseDate: '2026-05-10',
+  isEarlyAccess: true,
+  releaseType: 'SINGLE',
 };
 
 const UserSimulator = () => {

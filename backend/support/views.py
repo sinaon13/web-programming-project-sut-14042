@@ -6,6 +6,7 @@ from django.contrib.auth import get_user_model
 from django.shortcuts import get_object_or_404
 
 from accounts.permissions import IsSupportOrAdmin
+from notifications.models import Notification
 from .models import Ticket, TicketMessage
 from .serializers import (
     TicketListSerializer,
@@ -41,7 +42,14 @@ class TicketListCreateView(generics.ListCreateAPIView):
         return Ticket.objects.filter(user=user)
 
     def perform_create(self, serializer):
-        serializer.save(user=self.request.user)
+        ticket = serializer.save(user=self.request.user)
+        # Notify user that their ticket is created
+        Notification.objects.create(
+            recipient=self.request.user,
+            title="Ticket Created",
+            message=f"Your ticket '{ticket.subject}' has been submitted.",
+            notification_type=Notification.Type.SUPPORT
+        )
 
 
 class TicketDetailView(generics.RetrieveUpdateAPIView):
@@ -79,7 +87,23 @@ class TicketMessageCreateView(generics.CreateAPIView):
         if ticket.user != self.request.user and self.request.user.role not in ('SUPPORT', 'ADMIN'):
             from rest_framework.exceptions import PermissionDenied
             raise PermissionDenied('You do not have permission to message on this ticket.')
+            
         serializer.save(sender=self.request.user, ticket=ticket)
+        
+        # Update ticket status based on who replied
+        if self.request.user.role in ('SUPPORT', 'ADMIN'):
+            ticket.status = Ticket.Status.ANSWERED
+            
+            # Send notification to user that their ticket got a reply
+            Notification.objects.create(
+                recipient=ticket.user,
+                title=f"New Reply on Ticket #{ticket.pk}",
+                message=f"Support has replied to your ticket '{ticket.subject}'.",
+                notification_type='SYSTEM'
+            )
+        else:
+            ticket.status = Ticket.Status.OPEN
+        ticket.save(update_fields=['status', 'updated_at'])
 
 
 # ---------------------------------------------------------------------------
@@ -107,11 +131,23 @@ class ArtistStatusUpdateView(APIView):
         if status_req == 'APPROVED':
             user.artist_status = User.ArtistStatus.APPROVED
             user.save(update_fields=['artist_status'])
+            Notification.objects.create(
+                recipient=user,
+                title="Artist Application Approved",
+                message="Congratulations! Your artist application has been approved.",
+                notification_type=Notification.Type.SYSTEM
+            )
             return Response({'detail': f'Artist {user.display_name or user.username} approved.'})
         elif status_req == 'REJECTED':
             user.artist_status = User.ArtistStatus.REJECTED
             user.rejection_reason = reason
             user.save(update_fields=['artist_status', 'rejection_reason'])
+            Notification.objects.create(
+                recipient=user,
+                title="Artist Application Rejected",
+                message=f"Your artist application was rejected. Reason: {reason}",
+                notification_type=Notification.Type.SYSTEM
+            )
             return Response({'detail': f'Artist {user.display_name or user.username} rejected.'})
         
         return Response({'detail': 'Invalid status provided.'}, status=400)

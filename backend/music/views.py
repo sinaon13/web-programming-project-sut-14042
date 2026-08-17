@@ -21,9 +21,11 @@ from .serializers import (
     AlbumListSerializer,
     AlbumDetailSerializer,
     AlbumCreateSerializer,
-    TrackSerializer,
     TrackUploadSerializer,
+    TrackSerializer,
 )
+from django_filters.rest_framework import DjangoFilterBackend
+from rest_framework.filters import SearchFilter, OrderingFilter
 
 
 # ---------------------------------------------------------------------------
@@ -36,9 +38,11 @@ class TrackViewSet(viewsets.ModelViewSet):
     """
     queryset = Track.objects.select_related('artist', 'album').all()
     parser_classes = [MultiPartParser, FormParser]
+    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     filterset_fields = ['genre', 'release_type', 'artist', 'album']
     search_fields = ['title', 'artist__display_name', 'genre']
     ordering_fields = ['release_date', 'total_streams', 'title']
+    ordering = ['-release_date']
 
     def get_serializer_class(self):
         if self.action in ['create', 'update', 'partial_update']:
@@ -213,10 +217,13 @@ class AlbumViewSet(viewsets.ModelViewSet):
     """
     ViewSet for viewing, creating, updating, and deleting albums.
     """
+    queryset = Album.objects.select_related('artist').prefetch_related('tracks').all()
     parser_classes = [MultiPartParser, FormParser]
+    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     filterset_fields = ['genre', 'artist']
     search_fields = ['title', 'artist__display_name', 'genre']
     ordering_fields = ['release_date', 'title']
+    ordering = ['-release_date']
 
     def get_queryset(self):
         if self.action in ['retrieve', 'update', 'partial_update', 'destroy']:

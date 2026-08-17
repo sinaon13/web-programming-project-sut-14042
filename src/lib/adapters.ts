@@ -29,6 +29,7 @@ export function adaptTrack(raw: any): Track {
     audioUrl128: raw.id ? `${BASE_URL}/music/tracks/${raw.id}/play/` : '',
     listenersCount: raw.listeners_count ?? raw.listenersCount ?? 0,
     totalStreams: raw.total_streams ?? raw.totalStreams ?? 0,
+    revenue: raw.revenue,
     releaseDate: raw.release_date || raw.releaseDate || '',
     isEarlyAccess: raw.is_early_access ?? raw.isEarlyAccess ?? false,
     lyrics: raw.lyrics || '',
@@ -101,7 +102,9 @@ export function adaptTicket(raw: any): Ticket {
     userName: raw.user_display || raw.userName || '',
     subject: raw.subject || '',
     status: raw.status || 'OPEN',
-    createdAt: raw.created_at || raw.createdAt || '',
+    priority: raw.priority || 'MEDIUM',
+    assignedTo: raw.assigned_to_name || raw.assigned_to || '',
+    createdAt: raw.created_at ? new Date(raw.created_at).toLocaleDateString() : '',
     messages,
   };
 }

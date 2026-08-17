@@ -26,6 +26,7 @@ const sampleTrack: Track = {
   totalStreams: 10000,
   releaseDate: '2026-01-01',
   isEarlyAccess: false,
+      releaseType: 'SINGLE',
   lyrics: 'These are test lyrics.'
 };
 

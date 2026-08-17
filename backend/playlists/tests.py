@@ -42,7 +42,7 @@ class PlaylistTests(TestCase):
         playlist = Playlist.objects.create(owner=self.user, title='My List')
         self.client.force_authenticate(user=self.user)
         response = self.client.post(
-            f'{self.playlists_url}{playlist.pk}/add-track/',
+            f'{self.playlists_url}{playlist.pk}/tracks/',
             {'track_id': self.track.pk},
         )
         self.assertEqual(response.status_code, http_status.HTTP_201_CREATED)
@@ -54,7 +54,7 @@ class PlaylistTests(TestCase):
         PlaylistTrack.objects.create(playlist=playlist, track=self.track)
         self.client.force_authenticate(user=self.user)
         response = self.client.delete(
-            f'{self.playlists_url}{playlist.pk}/remove-track/{self.track.pk}/',
+            f'{self.playlists_url}{playlist.pk}/tracks/{self.track.pk}/',
         )
         self.assertEqual(response.status_code, http_status.HTTP_200_OK)
         self.assertEqual(PlaylistTrack.objects.count(), 0)
@@ -65,7 +65,7 @@ class PlaylistTests(TestCase):
         PlaylistTrack.objects.create(playlist=playlist, track=self.track)
         self.client.force_authenticate(user=self.user)
         response = self.client.post(
-            f'{self.playlists_url}{playlist.pk}/add-track/',
+            f'{self.playlists_url}{playlist.pk}/tracks/',
             {'track_id': self.track.pk},
         )
         self.assertEqual(response.status_code, http_status.HTTP_400_BAD_REQUEST)

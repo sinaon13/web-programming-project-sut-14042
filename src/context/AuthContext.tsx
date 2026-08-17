@@ -110,10 +110,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     password = 'DefaultPassword123!'
   ): Promise<void> => {
     // Always go through Django backend — no localStorage fallback
-    const cleanUsername = email.split('@')[0].replace(/[^a-zA-Z0-9_]/g, '') + Math.floor(Math.random() * 1000);
     const payload: Record<string, any> = {
       email,
-      username: cleanUsername,
       password,
       password_confirm: password,
       display_name: name,

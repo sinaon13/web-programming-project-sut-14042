@@ -43,6 +43,7 @@ class TrackSerializer(serializers.ModelSerializer):
     audio_file_128 = serializers.SerializerMethodField()
     listeners_count = serializers.SerializerMethodField()
     total_streams = serializers.SerializerMethodField()
+    revenue = serializers.SerializerMethodField()
 
     class Meta:
         model = Track
@@ -51,7 +52,7 @@ class TrackSerializer(serializers.ModelSerializer):
             'cover', 'audio_file', 'audio_file_128', 'release_date', 'release_type',
             'genre', 'lyrics', 'release_year', 'collaborators',
             'file_format', 'is_early_access',
-            'listeners_count', 'total_streams',
+            'listeners_count', 'total_streams', 'revenue',
         ]
 
     def _is_user_gold_or_owner(self, track):
@@ -85,6 +86,13 @@ class TrackSerializer(serializers.ModelSerializer):
         if request and hasattr(request, 'user') and request.user.is_authenticated:
             if self._is_user_gold_or_owner(obj):
                 return obj.total_streams
+        return None
+
+    def get_revenue(self, obj):
+        request = self.context.get('request')
+        if request and hasattr(request, 'user') and request.user.is_authenticated:
+            if obj.artist == request.user:
+                return (obj.total_streams or 0) * 200
         return None
 
 

@@ -54,7 +54,10 @@ class SupportTests(TestCase):
     # ---- Test 4: Approve artist ----
     def test_approve_artist(self):
         self.client.force_authenticate(user=self.support_user)
-        response = self.client.post(f'/api/support/artist-requests/{self.artist.pk}/approve/')
+        response = self.client.patch(
+            f'/api/support/artist-requests/{self.artist.pk}/',
+            {'status': 'APPROVED'}
+        )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.artist.refresh_from_db()
         self.assertEqual(self.artist.artist_status, User.ArtistStatus.APPROVED)
@@ -62,9 +65,9 @@ class SupportTests(TestCase):
     # ---- Test 5: Reject artist ----
     def test_reject_artist(self):
         self.client.force_authenticate(user=self.support_user)
-        response = self.client.post(
-            f'/api/support/artist-requests/{self.artist.pk}/reject/',
-            {'reason': 'Incomplete portfolio'},
+        response = self.client.patch(
+            f'/api/support/artist-requests/{self.artist.pk}/',
+            {'status': 'REJECTED', 'reason': 'Incomplete portfolio'},
         )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.artist.refresh_from_db()
@@ -74,5 +77,8 @@ class SupportTests(TestCase):
     # ---- Test 6: Listener cannot approve artist ----
     def test_listener_cannot_approve_artist(self):
         self.client.force_authenticate(user=self.listener)
-        response = self.client.post(f'/api/support/artist-requests/{self.artist.pk}/approve/')
+        response = self.client.patch(
+            f'/api/support/artist-requests/{self.artist.pk}/',
+            {'status': 'APPROVED'}
+        )
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)

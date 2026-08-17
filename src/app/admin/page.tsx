@@ -55,9 +55,9 @@ export default function AdminPortalPage() {
       }
       
       setBackendOffline(false);
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
-      if (err?.message?.includes("fetch") || err?.message?.includes("Network")) setBackendOffline(true);
+      if (e?.message?.includes("fetch") || e?.message?.includes("Network")) setBackendOffline(true);
     }
   };
 

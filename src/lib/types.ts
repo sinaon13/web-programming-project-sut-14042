@@ -43,6 +43,7 @@ export interface Track {
   audioUrl128?: string;
   listenersCount: number;
   totalStreams: number;
+  revenue?: number;
   releaseDate: string;
   releaseType: 'SINGLE' | 'ALBUM';
   isEarlyAccess: boolean;
@@ -88,6 +89,8 @@ export interface Ticket {
   userName: string;
   subject: string;
   status: 'OPEN' | 'ANSWERED' | 'CLOSED';
+  priority: 'LOW' | 'MEDIUM' | 'HIGH';
+  assignedTo?: string;
   createdAt: string;
   messages: { sender: string; text: string; time: string }[];
 }

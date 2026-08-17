@@ -11,6 +11,7 @@ class RegisterSerializer(serializers.ModelSerializer):
 
     password = serializers.CharField(write_only=True, min_length=8)
     password_confirm = serializers.CharField(write_only=True)
+    username = serializers.CharField(required=False)
 
     class Meta:
         model = User
@@ -25,9 +26,14 @@ class RegisterSerializer(serializers.ModelSerializer):
         return attrs
 
     def create(self, validated_data):
+        import uuid
+        username = validated_data.get('username')
+        if not username:
+            username = f"user_{uuid.uuid4().hex[:8]}"
+            
         user = User.objects.create_user(
             email=validated_data['email'],
-            username=validated_data['username'],
+            username=username,
             password=validated_data['password'],
             display_name=validated_data.get('display_name', ''),
             birth_date=validated_data.get('birth_date'),
@@ -44,6 +50,7 @@ class ArtistRegisterSerializer(serializers.ModelSerializer):
 
     password = serializers.CharField(write_only=True, min_length=8)
     password_confirm = serializers.CharField(write_only=True)
+    username = serializers.CharField(required=False)
 
     class Meta:
         model = User
@@ -59,9 +66,14 @@ class ArtistRegisterSerializer(serializers.ModelSerializer):
         return attrs
 
     def create(self, validated_data):
+        import uuid
+        username = validated_data.get('username')
+        if not username:
+            username = f"artist_{uuid.uuid4().hex[:8]}"
+            
         user = User.objects.create_user(
             email=validated_data['email'],
-            username=validated_data['username'],
+            username=username,
             password=validated_data['password'],
             display_name=validated_data.get('display_name', ''),
             birth_date=validated_data.get('birth_date'),

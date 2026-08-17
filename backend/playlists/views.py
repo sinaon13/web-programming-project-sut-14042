@@ -4,6 +4,8 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from django.shortcuts import get_object_or_404
 from django.db.models import Q
+from django_filters.rest_framework import DjangoFilterBackend
+from rest_framework.filters import SearchFilter, OrderingFilter
 
 from music.models import Track
 from .models import Playlist, PlaylistTrack
@@ -23,6 +25,10 @@ class PlaylistListCreateView(generics.ListCreateAPIView):
     """
 
     permission_classes = [IsAuthenticated]
+    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
+    search_fields = ['title', 'description', 'owner__display_name']
+    ordering_fields = ['created_at', 'title']
+    ordering = ['-created_at']
 
     def get_serializer_class(self):
         if self.request.method == 'POST':
