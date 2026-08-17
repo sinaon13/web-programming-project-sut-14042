@@ -4,8 +4,9 @@ import { musicAPI, authAPI } from '@/lib/api';
 import { User, Track, Album } from '@/lib/types';
 import { adaptPublicUser, adaptTrack, adaptAlbum } from '@/lib/adapters';
 import { useAuth } from '@/context/AuthContext';
-import { usePlayer } from '@/context/PlayerContext';
+import { useToast } from '@/components/ui/Toast';
 import { useLanguage } from '@/context/LanguageContext';
+import { usePlayer } from '@/context/PlayerContext';
 import { DownloadButton } from '@/components/ui/DownloadButton';
 import { BackendOfflineBanner } from '@/components/ui/BackendOfflineBanner';
 import { useParams } from 'next/navigation';
@@ -14,8 +15,9 @@ import Link from 'next/link';
 export default function ArtistProfilePage() {
   const { id } = useParams();
   const { currentUser } = useAuth();
-  const { playTrack } = usePlayer();
+  const { showToast } = useToast();
   const { t } = useLanguage();
+  const { playTrack } = usePlayer();
   const [following, setFollowing] = useState(false);
   const [artist, setArtist] = useState<User | null>(null);
   const [artistTracks, setArtistTracks] = useState<Track[]>([]);
@@ -59,7 +61,7 @@ export default function ArtistProfilePage() {
         setFollowing(true);
       }
     } catch (err: any) {
-      alert('Failed to update follow status.');
+      showToast('Failed to update follow status.', 'error');
     }
   };
 

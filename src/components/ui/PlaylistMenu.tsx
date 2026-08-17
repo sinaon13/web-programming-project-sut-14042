@@ -5,11 +5,15 @@ import { playlistsAPI } from '@/lib/api';
 import { adaptPlaylist } from '@/lib/adapters';
 import { useAuth } from '@/context/AuthContext';
 import { usePlayer } from '@/context/PlayerContext';
+import { useLanguage } from '@/context/LanguageContext';
+import { useToast } from '@/components/ui/Toast';
 import Link from 'next/link';
 
 export const PlaylistMenu: React.FC<{ track: Track }> = ({ track }) => {
   const { currentUser } = useAuth();
   const { addToQueue } = usePlayer();
+  const { t } = useLanguage();
+  const { showToast } = useToast();
   const [isOpen, setIsOpen] = useState(false);
   const [myPlaylists, setMyPlaylists] = useState<Playlist[]>([]);
 
@@ -44,7 +48,7 @@ export const PlaylistMenu: React.FC<{ track: Track }> = ({ track }) => {
       const list = ((res as any).results || (Array.isArray(res) ? res : [])).map(adaptPlaylist);
       setMyPlaylists(list.filter((p: Playlist) => p.ownerId === String(currentUser.id)));
     } catch (err: any) {
-      alert(`Failed to modify playlist: ${err.message || 'Is the backend offline?'}`);
+      showToast(t.playlistAddTrackFailed, 'error');
     }
   };
 

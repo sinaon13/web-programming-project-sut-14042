@@ -113,10 +113,15 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   // Helper to get correct audio URL
   const getAudioUrl = useCallback((track: Track | null, quality: AudioQuality): string => {
     if (!track) return '';
-    let url = (quality === 'LOW' && track.audioUrl128) ? track.audioUrl128 : (track.audioUrl || 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3');
-    if (url.includes('/api/music/tracks/') && typeof window !== 'undefined') {
+    let url = track.audioUrl || 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3';
+    let queryParams = [];
+    if (quality === 'LOW') queryParams.push('quality=low');
+    if (typeof window !== 'undefined') {
       const token = localStorage.getItem('access_token');
-      if (token) url += `?token=${token}`;
+      if (token) queryParams.push(`token=${token}`);
+    }
+    if (queryParams.length > 0 && url.includes('/api/music/tracks/')) {
+      url += '?' + queryParams.join('&');
     }
     return url;
   }, []);

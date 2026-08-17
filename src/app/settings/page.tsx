@@ -6,6 +6,7 @@ import { Tier } from '@/lib/types';
 import { usePlayer } from '@/context/PlayerContext';
 import { useLanguage } from '@/context/LanguageContext';
 import { BackendOfflineBanner } from '@/components/ui/BackendOfflineBanner';
+import { useToast } from '@/components/ui/Toast';
 import { useSearchParams } from 'next/navigation';
 
 export default function SettingsPage() {
@@ -21,6 +22,7 @@ function SettingsContent() {
   const { volume, setVolume } = usePlayer();
   const { language, setLanguage, t } = useLanguage();
   const searchParams = useSearchParams();
+  const { showToast } = useToast();
   const [prices, setPrices] = useState({ SILVER: 0, GOLD: 0 });
   const [planIds, setPlanIds] = useState<Record<string, number>>({});
   const [backendOffline, setBackendOffline] = useState(false);
@@ -93,7 +95,7 @@ function SettingsContent() {
   const handlePurchase = async (tier: 'SILVER' | 'GOLD') => {
     const planId = planIds[tier];
     if (!planId) {
-      alert('Plan not found. Is the backend online?');
+      showToast(t.backendOffline, 'error');
       return;
     }
     try {
@@ -106,13 +108,13 @@ function SettingsContent() {
         window.location.href = paymentUrl;
       } else {
         // Free plan was activated directly
-        alert('Plan activated!');
+        showToast(t.planActivated);
         const freshUser = await authAPI.getMe();
         updateUser({ tier: freshUser.tier || tier });
         setPaymentProcessing(false);
       }
     } catch (err: any) {
-      alert(`Purchase failed: ${err?.message || 'Unknown error'}`);
+      showToast(`${err?.message || t.unknownError}`, 'error');
       setPaymentProcessing(false);
     }
   };
@@ -129,9 +131,9 @@ function SettingsContent() {
         volume: Math.round(volume * 100),
         notifications_enabled: notifNewReleases || notifExpiration || notifEmail
       });
-      alert('✅ Platform preferences and notification limitations saved successfully!');
+      showToast(t.prefsSaved);
     } catch (err: any) {
-      alert('Failed to save preferences. Is the backend online?');
+      showToast(t.backendOffline, 'error');
     }
   };
 
@@ -141,10 +143,10 @@ function SettingsContent() {
 
     try {
       await authAPI.deleteAccount();
-      alert('✅ Account and all associated data deleted permanently.');
+      showToast(t.accountDeleted);
       logout();
     } catch (err: any) {
-      alert('Failed to delete account. Is the backend offline?');
+      showToast(t.backendOffline, 'error');
     }
   };
 

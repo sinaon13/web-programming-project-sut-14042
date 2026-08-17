@@ -271,8 +271,12 @@ export const musicAPI = {
     });
 
     if (!res.ok) {
-      if (res.status === 403) throw new Error('Downloading tracks is restricted to Silver and Gold subscribers.');
-      throw new Error('Download failed');
+      let msg = 'Download failed';
+      try {
+        const errData = await res.json();
+        msg = errData.detail || msg;
+      } catch (e) {}
+      throw new Error(msg);
     }
 
     const blob = await res.blob();

@@ -6,10 +6,12 @@ import { User, Ticket } from '@/lib/types';
 import { useLanguage } from '@/context/LanguageContext';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
 import { BackendOfflineBanner } from '@/components/ui/BackendOfflineBanner';
+import { useToast } from '@/components/ui/Toast';
 
 export default function AdminPortalPage() {
   const { currentUser } = useAuth();
   const { t } = useLanguage();
+  const { showToast } = useToast();
   const [tab, setTab] = useState<'VERIFY' | 'TICKETS' | 'ACCOUNTING' | 'PRICING'>('VERIFY');
   
   const [pendingArtists, setPendingArtists] = useState<User[]>([]);
@@ -65,7 +67,7 @@ export default function AdminPortalPage() {
     loadData();
   }, [currentUser]);
 
-  if (currentUser?.role !== 'SUPPORT' && currentUser?.role !== 'ADMIN') return <div className="p-4 bg-red-900/20 text-red-400 rounded">Access Denied</div>;
+  if (currentUser?.role !== 'SUPPORT' && currentUser?.role !== 'ADMIN') return <div className="p-4 bg-red-900/20 text-red-400 rounded">{t.accessDenied}</div>;
 
   const handleArtistAction = async (id: string | number, status: 'APPROVED' | 'REJECTED') => {
     try {
@@ -76,9 +78,9 @@ export default function AdminPortalPage() {
         await supportAPI.rejectArtist(id, reason);
       }
       setPendingArtists(pendingArtists.filter(u => u.id !== id));
-      alert(`Artist successfully ${status.toLowerCase()}! Automated notification sent.`);
+      showToast(status === 'APPROVED' ? t.artistApproved : t.artistRejected);
     } catch (err: any) {
-      alert('Action failed. Is the backend offline?');
+      showToast(t.backendOffline, 'error');
     }
   };
 
@@ -90,19 +92,19 @@ export default function AdminPortalPage() {
       await loadData();
       setReplyTexts({ ...replyTexts, [ticketId]: '' });
     } catch (err: any) {
-      alert('Failed to send reply.');
+      showToast(t.replyFailed, 'error');
     }
   };
 
   const handleSettleArtist = async (artistId: string | number) => {
     try {
       await reportsAPI.settlePayouts([artistId]);
-      alert('Artist payout marked as SETTLED! Notification sent.');
+      showToast(t.payoutSettled);
       // Refresh payouts
       const payoutResp = await reportsAPI.getAdminPayouts();
       setPayouts(payoutResp?.payouts || []);
     } catch (err: any) {
-      alert('Failed to settle payout.');
+      showToast(t.backendOffline, 'error');
     }
   };
 
@@ -113,18 +115,18 @@ export default function AdminPortalPage() {
       const gPlan = plans.find(p => p.tier === 'GOLD');
       if (sPlan) await subscriptionsAPI.updatePlanPrice(sPlan.id, silverPrice);
       if (gPlan) await subscriptionsAPI.updatePlanPrice(gPlan.id, goldPrice);
-      alert('System pricing adjusted successfully without code deployment!');
+      showToast(t.pricingUpdated);
     } catch (err: any) {
-      alert('Failed to update prices.');
+      showToast(t.backendOffline, 'error');
     }
   };
 
   const handleAdvanceTime = async () => {
     try {
       const res = await subscriptionsAPI.advanceTime(advanceTimeDays);
-      alert((res as any).detail || 'Time advanced successfully!');
+      showToast((res as any).detail || t.pricingUpdated);
     } catch (err: any) {
-      alert('Failed to advance time.');
+      showToast(t.backendOffline, 'error');
     }
   };
 
@@ -133,9 +135,9 @@ export default function AdminPortalPage() {
     try {
       await supportAPI.updateTicketStatus(ticketId, 'CLOSED');
       await loadData();
-      alert('Ticket closed successfully.');
+      showToast(t.ticketClosed);
     } catch (err: any) {
-      alert('Failed to close ticket.');
+      showToast(t.backendOffline, 'error');
     }
   };
 
@@ -176,7 +178,7 @@ export default function AdminPortalPage() {
 
       {tab === 'VERIFY' && (
         <div className="space-y-3">
-          {pendingArtists.length === 0 ? <p className="text-neutral-500 text-sm">No pending applications.</p> : pendingArtists.map((artist: any) => (
+          {pendingArtists.length === 0 ? <p className="text-neutral-500 text-sm">{t.noPendingApps}</p> : pendingArtists.map((artist: any) => (
             <div key={artist.id} className="p-4 bg-neutral-900 border border-neutral-800 rounded-xl flex justify-between items-center shadow-md">
               <div>
                 <h4 className="font-bold text-white text-sm">{artist.display_name || artist.username}</h4>
@@ -240,17 +242,17 @@ export default function AdminPortalPage() {
 
       {tab === 'ACCOUNTING' && currentUser?.role === 'ADMIN' && (
         <div className="p-6 bg-neutral-900 border border-neutral-800 rounded-xl shadow-xl">
-          <h3 className="text-lg font-bold text-white mb-4">Monthly Financial Accounting & Artist Payouts</h3>
+          <h3 className="text-lg font-bold text-white mb-4">{t.monthlyAccounting}</h3>
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="border-b border-neutral-800 text-xs text-neutral-400">
-                  <th className="pb-3">Artist Name & ID</th>
-                  <th className="pb-3">Total Registered Streams</th>
-                  <th className="pb-3">Unpaid Streams</th>
-                  <th className="pb-3">Calculated Payout</th>
-                  <th className="pb-3">Monetization</th>
-                  <th className="pb-3">Action (Admin Only)</th>
+                  <th className="pb-3">{t.artistNameId}</th>
+                  <th className="pb-3">{t.totalRegisteredStreams}</th>
+                  <th className="pb-3">{t.unpaidStreams}</th>
+                  <th className="pb-3">{t.calculatedPayout}</th>
+                  <th className="pb-3">{t.monetization}</th>
+                  <th className="pb-3">{t.actionAdminOnly}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-neutral-800/60 text-sm">
@@ -261,11 +263,11 @@ export default function AdminPortalPage() {
                     <td className="py-3 text-neutral-300">{art.unpaid_streams?.toLocaleString() || 0}</td>
                     <td className="py-3 font-mono text-amber-400 font-bold">{parseFloat(art.payout_amount).toLocaleString()} Rials</td>
                     <td className="py-3">
-                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${art.is_monetized ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>{art.is_monetized ? 'Enabled' : 'Disabled'}</span>
+                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${art.is_monetized ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>{art.is_monetized ? t.enabled : t.disabled}</span>
                     </td>
                     <td className="py-3">
                       <button onClick={() => handleSettleArtist(art.artist_id)} className={`px-3 py-1 text-black font-bold text-xs rounded ${art.is_monetized ? 'bg-red-500 hover:bg-red-400' : 'bg-green-500 hover:bg-green-400'}`}>
-                        {art.is_monetized ? 'Revoke Monetization' : 'Confirm Monetization'}
+                        {art.is_monetized ? t.revokeMonetization : t.confirmMonetization}
                       </button>
                     </td>
                   </tr>
@@ -280,21 +282,21 @@ export default function AdminPortalPage() {
         <div className="space-y-8">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div className="p-5 bg-neutral-900 border border-neutral-800 rounded-xl text-center shadow-lg">
-              <span className="text-xs text-neutral-400 uppercase font-semibold">Total Subscription Revenue</span>
+              <span className="text-xs text-neutral-400 uppercase font-semibold">{t.totalSubRevenue}</span>
               <span className="block text-2xl font-extrabold text-green-400 mt-2">{totalSubRevenue.toLocaleString()} IRR</span>
             </div>
             <div className="p-5 bg-neutral-900 border border-neutral-800 rounded-xl text-center shadow-lg">
-              <span className="text-xs text-neutral-400 uppercase font-semibold">Active Gold VIP Users</span>
-              <span className="block text-2xl font-extrabold text-amber-400 mt-2">{activeGold} Subscribers</span>
+              <span className="text-xs text-neutral-400 uppercase font-semibold">{t.activeGoldVip}</span>
+              <span className="block text-2xl font-extrabold text-amber-400 mt-2">{activeGold} {t.subscribers}</span>
             </div>
             <div className="p-5 bg-neutral-900 border border-neutral-800 rounded-xl text-center shadow-lg">
-              <span className="text-xs text-neutral-400 uppercase font-semibold">Active Silver Users</span>
-              <span className="block text-2xl font-extrabold text-blue-400 mt-2">{activeSilver} Subscribers</span>
+              <span className="text-xs text-neutral-400 uppercase font-semibold">{t.activeSilverUsers}</span>
+              <span className="block text-2xl font-extrabold text-blue-400 mt-2">{activeSilver} {t.subscribers}</span>
             </div>
           </div>
 
           <div className="p-6 bg-neutral-900 border border-neutral-800 rounded-xl shadow-xl">
-            <h3 className="text-lg font-bold text-white mb-6">User Subscription Tier Distribution</h3>
+            <h3 className="text-lg font-bold text-white mb-6">{t.tierDistribution}</h3>
             <div className="h-72 w-full">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
@@ -311,22 +313,22 @@ export default function AdminPortalPage() {
           </div>
 
           <form onSubmit={handleUpdatePrices} className="max-w-md p-6 bg-neutral-900 border border-neutral-800 rounded-xl space-y-4 shadow-xl">
-            <h3 className="font-bold text-white text-md">Dynamic Pricing Controls</h3>
+            <h3 className="font-bold text-white text-md">{t.dynamicPricing}</h3>
             <div>
-              <label className="block text-xs font-semibold text-neutral-400 mb-1">Silver Tier Price (IRR)</label>
+              <label className="block text-xs font-semibold text-neutral-400 mb-1">{t.silverTierPrice}</label>
               <input type="number" value={silverPrice} onChange={e => setSilverPrice(Number(e.target.value))} required className="w-full p-2 bg-neutral-800 border border-neutral-700 rounded text-sm text-white font-mono" />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-neutral-400 mb-1">Gold VIP Tier Price (IRR)</label>
+              <label className="block text-xs font-semibold text-neutral-400 mb-1">{t.goldTierPrice}</label>
               <input type="number" value={goldPrice} onChange={e => setGoldPrice(Number(e.target.value))} required className="w-full p-2 bg-neutral-800 border border-neutral-700 rounded text-sm text-white font-mono" />
             </div>
             <button type="submit" className="w-full py-3 bg-amber-500 text-black font-bold rounded-xl hover:bg-amber-400 transition shadow-lg">{t.savePriceChanges}</button>
           </form>
 
           <div className="p-6 bg-neutral-900 border border-neutral-800 rounded-xl shadow-xl mt-6">
-            <h3 className="text-lg font-bold text-white mb-4">Time Travel (Testing & Debug)</h3>
+            <h3 className="text-lg font-bold text-white mb-4">{t.timeTravelTitle}</h3>
             <p className="text-sm text-neutral-400 mb-4">
-              Advance the global backend clock to test subscription expirations. Subscriptions that pass their expiration date will be automatically deactivated and users will be notified.
+              {t.timeTravelDesc}
             </p>
             <div className="flex space-x-4">
               <input
@@ -340,7 +342,7 @@ export default function AdminPortalPage() {
                 onClick={handleAdvanceTime}
                 className="px-6 py-3 bg-red-600 hover:bg-red-500 text-white font-bold rounded-xl transition shadow-lg"
               >
-                Advance {advanceTimeDays} Days
+                {t.advanceDays} {advanceTimeDays} {t.days}
               </button>
             </div>
           </div>

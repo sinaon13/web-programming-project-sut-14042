@@ -4,15 +4,58 @@ import { notificationsAPI } from '@/lib/api';
 import { AppNotification } from '@/lib/types';
 import { adaptNotification } from '@/lib/adapters';
 import { useAuth } from '@/context/AuthContext';
+import { useToast } from '@/components/ui/Toast';
 import { useLanguage } from '@/context/LanguageContext';
 import { BackendOfflineBanner } from '@/components/ui/BackendOfflineBanner';
 import Link from 'next/link';
 
 export default function NotificationsPage() {
   const { currentUser } = useAuth();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
+  const { showToast } = useToast();
   const [notifs, setNotifs] = useState<AppNotification[]>([]);
   const [backendOffline, setBackendOffline] = useState(false);
+
+  const translateNotification = (title: string, message: string) => {
+    if (language === 'en') return { title, message };
+    
+    let tTitle = title;
+    let tMessage = message;
+
+    // Tickets
+    if (title === 'Ticket Created') tTitle = 'تیکت ایجاد شد';
+    if (message.includes('has been submitted')) tMessage = 'تیکت شما با موفقیت ثبت شد.';
+    if (title.includes('New Reply on Ticket')) tTitle = 'پاسخ جدید در تیکت';
+    if (message.includes('Support has replied')) tMessage = 'پشتیبانی به تیکت شما پاسخ داد.';
+
+    // Artist
+    if (title === 'Artist Application Approved') tTitle = 'درخواست هنرمندی تایید شد';
+    if (message.includes('Congratulations! Your artist application has been approved')) tMessage = 'تبریک! درخواست هنرمندی شما تایید شد.';
+    if (title === 'Artist Application Rejected') tTitle = 'درخواست هنرمندی رد شد';
+    if (message.includes('Your artist application was rejected')) tMessage = 'درخواست هنرمندی شما رد شد. ' + message.split('Reason:')[1];
+
+    // Subscriptions
+    if (title === 'Subscription Expired') tTitle = 'انقضای اشتراک';
+    if (message.includes('Your premium subscription has expired')) tMessage = 'اشتراک ویژه شما منقضی شده است.';
+    
+    // Payouts
+    if (title === 'Monthly Payout Processed') tTitle = 'پرداخت ماهانه انجام شد';
+    if (message.includes('You earned')) {
+      const match = message.match(/You earned (\d+) IRR from (\d+) streams/);
+      if (match) tMessage = `شما مبلغ ${match[1]} ریال از ${match[2]} استریم در این ماه درآمد داشتید!`;
+    }
+    
+    // Monetization
+    if (title === 'Monetization Status') tTitle = 'وضعیت درآمدزایی';
+    if (message.includes('were not monetized')) tMessage = 'استریم‌های شما درآمدزایی نداشتند. لطفا درخواست درآمدزایی بدهید.';
+    if (title === 'Monetization Monetized') tTitle = 'درآمدزایی فعال شد';
+    if (message.includes('Admin has confirmed your monetization')) tMessage = 'مدیریت درآمدزایی شما را تایید کرد.';
+    if (title === 'Monetization Revoked') tTitle = 'درآمدزایی لغو شد';
+    if (message.includes('Admin has revoked your monetization')) tMessage = 'مدیریت درآمدزایی شما را لغو کرد.';
+
+    return { title: tTitle, message: tMessage };
+  };
+
 
   useEffect(() => {
     if (!currentUser) return;
@@ -38,7 +81,7 @@ export default function NotificationsPage() {
       setNotifs(results.map(adaptNotification));
       setBackendOffline(false);
     } catch (err: any) {
-      alert('Backend offline. Cannot mark notifications as read.');
+      showToast(t.backendOffline, 'error');
     }
   };
 
@@ -50,7 +93,7 @@ export default function NotificationsPage() {
       setNotifs(results.map(adaptNotification));
       setBackendOffline(false);
     } catch (err: any) {
-      alert('Backend offline. Cannot mark notification as read.');
+      showToast(t.backendOffline, 'error');
     }
   };
 
@@ -59,7 +102,7 @@ export default function NotificationsPage() {
       await notificationsAPI.deleteNotification(id);
       setNotifs(notifs.filter(n => n.id !== id));
     } catch (err: any) {
-      alert('Error deleting notification.');
+      showToast('Error deleting notification.', 'error');
     }
   };
 
@@ -79,10 +122,10 @@ export default function NotificationsPage() {
             <div className="pr-4">
               <div className="flex items-center space-x-2">
                 {!n.isRead && <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>}
-                <h4 className="text-sm font-bold text-white">{n.title}</h4>
+                <h4 className="text-sm font-bold text-white">{translateNotification(n.title, n.message).title}</h4>
                 <span className="text-[10px] text-neutral-400">{n.timestamp}</span>
               </div>
-              <p className="text-xs text-neutral-300 mt-1 leading-relaxed">{n.message}</p>
+              <p className="text-xs text-neutral-300 mt-1 leading-relaxed">{translateNotification(n.title, n.message).message}</p>
               {n.targetUrl && <Link href={n.targetUrl} className="text-[11px] text-green-400 font-bold hover:underline block mt-2">{t.viewDetails}</Link>}
             </div>
             

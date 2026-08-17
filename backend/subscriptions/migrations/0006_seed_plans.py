@@ -18,7 +18,7 @@ def seed_plans(apps, schema_editor):
             'tier': 'SILVER',
             'price': 50000,
             'duration_days': 30,
-            'daily_stream_limit': 100,
+            'daily_stream_limit': None,
             'max_playlists': 100,
             'description': 'Silver premium plan'
         },

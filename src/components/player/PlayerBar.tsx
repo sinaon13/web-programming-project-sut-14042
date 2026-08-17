@@ -18,8 +18,39 @@ export const PlayerBar: React.FC = () => {
   const [showLyrics, setShowLyrics] = useState(false);
   const [showQueue, setShowQueue] = useState(false);
   const [isFullScreen, setIsFullScreen] = useState(false);
+  const [localProgress, setLocalProgress] = useState<number | null>(null);
+  const seekTimeout = React.useRef<NodeJS.Timeout | null>(null);
+  const clearLocalTimeout = React.useRef<NodeJS.Timeout | null>(null);
+
+  const displayProgress = localProgress !== null ? localProgress : progress;
+
+  const handleSliderChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = parseFloat(e.target.value);
+    if (isNaN(val)) return;
+    setLocalProgress(val);
+    if (seekTimeout.current) clearTimeout(seekTimeout.current);
+    if (clearLocalTimeout.current) clearTimeout(clearLocalTimeout.current);
+    
+    seekTimeout.current = setTimeout(() => {
+      seek(val);
+      clearLocalTimeout.current = setTimeout(() => setLocalProgress(null), 400);
+    }, 100);
+  };
+
+  const handleSliderUp = (e: React.SyntheticEvent<HTMLInputElement>) => {
+    const val = parseFloat((e.currentTarget as HTMLInputElement).value);
+    if (!isNaN(val)) {
+      if (seekTimeout.current) clearTimeout(seekTimeout.current);
+      if (clearLocalTimeout.current) clearTimeout(clearLocalTimeout.current);
+      setLocalProgress(val);
+      seek(val);
+      clearLocalTimeout.current = setTimeout(() => setLocalProgress(null), 400);
+    }
+  };
 
   if (!currentTrack) return null;
+
+  
 
   const formatTime = (time: number) => {
     if (isNaN(time)) return '0:00';
@@ -33,7 +64,7 @@ export const PlayerBar: React.FC = () => {
 
   return (
     <>
-      <div className="fixed bottom-0 left-0 right-0 bg-neutral-900 border-t border-neutral-800 p-3 px-6 flex flex-col md:flex-row items-center justify-between z-40 shadow-2xl" style={accentStyle}>
+      <div className="fixed bottom-0 left-0 right-0 border-t border-neutral-800 p-3 px-6 flex flex-col md:flex-row items-center justify-between z-40 shadow-2xl" style={{ ...accentStyle, background: accentColor ? `linear-gradient(135deg, color-mix(in srgb, ${accentColor} 30%, transparent) 0%, #171717 50%, #171717 100%)` : '#171717' }}>
         <div className="flex items-center justify-between w-full md:w-1/4 mb-2 md:mb-0">
           <div className="flex items-center space-x-3 truncate">
             {/* Cover art with accent border synced to dominant color */}
@@ -87,8 +118,11 @@ export const PlayerBar: React.FC = () => {
           <div className="flex items-center space-x-2 w-full max-w-md">
             <span className="text-[10px] text-neutral-400 w-8 text-center font-mono">{formatTime(progress)}</span>
             <input
-              type="range" min="0" max={duration || 100} value={progress}
-              onChange={(e) => seek(parseFloat(e.target.value))}
+              type="range" min="0" max={duration || 100} value={displayProgress}
+              onChange={handleSliderChange}
+              onPointerUp={handleSliderUp}
+              onMouseUp={handleSliderUp}
+              onTouchEnd={handleSliderUp}
               className="w-full h-1 bg-neutral-700 rounded-lg appearance-none cursor-pointer"
               style={{ accentColor }}
             />
@@ -104,7 +138,7 @@ export const PlayerBar: React.FC = () => {
             className={`text-[10px] px-2 py-0.5 rounded border font-bold transition ${crossfadeEnabled ? 'text-black' : 'bg-neutral-800 text-neutral-400 hover:text-white border-neutral-700'}`}
             style={crossfadeEnabled ? { backgroundColor: accentColor, borderColor: accentColor } : {}}
           >
-            ✕fade {crossfadeEnabled ? 'ON' : 'OFF'}
+            ✕fade {crossfadeEnabled ? t.crossfadeOn : t.crossfadeOff}
           </button>
           <select
             value={audioQuality}
@@ -136,9 +170,9 @@ export const PlayerBar: React.FC = () => {
       </div>
 
       {isFullScreen && (
-        <div className="fixed inset-0 z-50 flex flex-col justify-between p-6 md:p-12 overflow-y-auto animate-fadeIn bg-neutral-950" style={{ background: accentColor ? `linear-gradient(to bottom, ${accentColor}30, #171717, #000)` : undefined }}>
+        <div className="fixed inset-0 z-50 flex flex-col justify-between p-6 md:p-12 overflow-y-auto animate-fadeIn bg-neutral-950" style={{ background: accentColor ? `linear-gradient(to bottom, color-mix(in srgb, ${accentColor} 30%, transparent), #171717, #000)` : undefined }}>
           <div className="flex justify-between items-center w-full max-w-2xl mx-auto border-b border-neutral-800 pb-4">
-            <span className="text-xs font-bold uppercase tracking-widest" style={{ color: accentColor }}>Now Playing in Full Screen</span>
+            <span className="text-xs font-bold uppercase tracking-widest" style={{ color: accentColor }}>{t.nowPlaying}</span>
             <button onClick={() => setIsFullScreen(false)} className="px-4 py-1.5 bg-neutral-800 hover:bg-neutral-700 text-white rounded-full font-bold text-xs border border-neutral-700 transition">
               {t.collapsePlayer}
             </button>
@@ -154,8 +188,11 @@ export const PlayerBar: React.FC = () => {
             <div className="flex items-center space-x-2 w-full mb-6">
               <span className="text-xs text-neutral-400 w-10 font-mono">{formatTime(progress)}</span>
               <input
-                type="range" min="0" max={duration || 100} value={progress}
-                onChange={(e) => seek(parseFloat(e.target.value))}
+                type="range" min="0" max={duration || 100} value={displayProgress}
+                onChange={handleSliderChange}
+                onPointerUp={handleSliderUp}
+                onMouseUp={handleSliderUp}
+                onTouchEnd={handleSliderUp}
                 className="w-full h-1.5 bg-neutral-700 rounded-lg appearance-none cursor-pointer"
                 style={{ accentColor }}
               />
@@ -192,15 +229,15 @@ export const PlayerBar: React.FC = () => {
                 className={`px-4 py-2 text-xs font-bold rounded-full border transition ${crossfadeEnabled ? 'text-black' : 'bg-neutral-800 text-neutral-300 hover:text-white border-neutral-700'}`}
                 style={crossfadeEnabled ? { backgroundColor: accentColor, borderColor: accentColor } : {}}
               >
-                Crossfade {crossfadeEnabled ? '5s ON' : 'OFF'}
+                Crossfade {crossfadeEnabled ? `5s ${t.crossfadeOn}` : t.crossfadeOff}
               </button>
               <select
                 value={audioQuality}
                 onChange={(e) => setAudioQuality(e.target.value as 'LOW' | 'HIGH')}
                 className="text-xs bg-neutral-800 text-neutral-300 border border-neutral-700 rounded-full px-4 py-2 cursor-pointer hover:bg-neutral-700 transition font-bold"
               >
-                <option value="LOW">Quality: 128kbps</option>
-                <option value="HIGH">Quality: 320kbps</option>
+                <option value="LOW">{t.qualityLabel} 128kbps</option>
+                <option value="HIGH">{t.qualityLabel} 320kbps</option>
               </select>
               <div className="flex items-center gap-2">
                 <span className="text-xs text-neutral-400">{t.vol}</span>
@@ -259,7 +296,7 @@ export const PlayerBar: React.FC = () => {
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
           <div className="bg-neutral-900 border border-neutral-800 p-6 rounded-xl max-w-md w-full text-center shadow-2xl">
             <h3 className="text-lg font-bold text-white mb-1">{currentTrack.title}</h3>
-            <p className="text-xs text-neutral-400 mb-6">By {currentTrack.artistName}</p>
+            <p className="text-xs text-neutral-400 mb-6">{t.byArtist} {currentTrack.artistName}</p>
             <div className="bg-black/50 p-4 rounded-lg border border-neutral-800 max-h-60 overflow-y-auto text-neutral-300 text-sm whitespace-pre-wrap leading-relaxed">
               {currentTrack.lyrics}
             </div>

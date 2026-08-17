@@ -4,6 +4,8 @@ import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { authAPI } from '@/lib/api';
+import { useLanguage } from '@/context/LanguageContext';
+import { useToast } from '@/components/ui/Toast';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -15,6 +17,8 @@ export default function LoginPage() {
   const [forgotMsg, setForgotMsg] = useState('');
   const [forgotLoading, setForgotLoading] = useState(false);
   const { login } = useAuth();
+  const { t } = useLanguage();
+  const { showToast } = useToast();
   const router = useRouter();
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -42,31 +46,31 @@ export default function LoginPage() {
 
   return (
     <div className="max-w-md mx-auto mt-12 p-6 bg-neutral-900 border border-neutral-800 rounded-xl shadow-2xl">
-      <h2 className="text-2xl font-bold mb-6 text-center text-white">Log in to Spotify Clone</h2>
+      <h2 className="text-2xl font-bold mb-6 text-center text-white">{t.loginTitle}</h2>
       {error && <div className="p-3 mb-4 bg-red-900/40 border border-red-500 text-red-300 text-xs rounded font-medium leading-relaxed">{error}</div>}
       
       <form onSubmit={handleLogin} className="space-y-4">
         <div>
-          <label className="block text-xs font-semibold text-neutral-400 mb-1">Email Address</label>
+          <label className="block text-xs font-semibold text-neutral-400 mb-1">{t.emailLabel}</label>
           <input type="email" value={email} onChange={e => setEmail(e.target.value)} required placeholder="you@example.com" className="w-full p-2.5 bg-neutral-800 border border-neutral-700 rounded text-sm text-white font-mono" />
         </div>
         <div>
-          <label className="block text-xs font-semibold text-neutral-400 mb-1">Password</label>
+          <label className="block text-xs font-semibold text-neutral-400 mb-1">{t.passwordLabel}</label>
           <input type="password" value={password} onChange={e => setPassword(e.target.value)} required placeholder="Min. 8 characters" className="w-full p-2.5 bg-neutral-800 border border-neutral-700 rounded text-sm text-white" />
         </div>
-        <button type="submit" disabled={loading} className="w-full py-2.5 bg-green-500 hover:bg-green-400 text-black font-bold rounded text-sm transition mt-2 shadow disabled:opacity-50">{loading ? 'Signing in...' : 'Sign In'}</button>
+        <button type="submit" disabled={loading} className="w-full py-2.5 bg-green-500 hover:bg-green-400 text-black font-bold rounded text-sm transition mt-2 shadow disabled:opacity-50">{loading ? t.signingIn : t.signIn}</button>
       </form>
 
       <div className="mt-4 flex justify-between text-xs text-neutral-400">
-        <button onClick={() => setShowForgot(true)} className="hover:text-white underline">Forgot Password?</button>
-        <Link href="/register" className="hover:text-white underline font-bold">Create Account</Link>
+        <button onClick={() => setShowForgot(true)} className="hover:text-white underline">{t.forgotPassword}</button>
+        <Link href="/register" className="hover:text-white underline font-bold">{t.createAccount}</Link>
       </div>
 
       {showForgot && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50">
           <div className="bg-neutral-900 border border-neutral-800 p-6 rounded-xl max-w-sm w-full text-center shadow-2xl">
-            <h3 className="font-bold text-white mb-2">Reset Password</h3>
-            <p className="text-xs text-neutral-400 mb-4">Enter your email to receive recovery instructions.</p>
+            <h3 className="font-bold text-white mb-2">{t.resetPassword}</h3>
+            <p className="text-xs text-neutral-400 mb-4">{t.resetPasswordDesc}</p>
             
             {forgotMsg && <div className="p-2 mb-3 bg-green-900/40 border border-green-500 text-green-400 text-xs rounded">{forgotMsg}</div>}
             
@@ -86,16 +90,16 @@ export default function LoginPage() {
                   setForgotMsg('Recovery email sent!');
                   setTimeout(() => setShowForgot(false), 2000);
                 } catch (err: any) {
-                  alert('Failed to send recovery email. Is backend online?');
+                  showToast(t.recoveryFailed, 'error');
                 } finally {
                   setForgotLoading(false);
                 }
               }} 
               className="w-full py-2 bg-green-500 text-black font-bold rounded text-xs mb-2 disabled:opacity-50"
             >
-              {forgotLoading ? 'Sending...' : 'Send Recovery Link'}
+              {forgotLoading ? t.sending : t.sendRecoveryLink}
             </button>
-            <button onClick={() => setShowForgot(false)} className="text-xs text-neutral-400 hover:text-white">Cancel</button>
+            <button onClick={() => setShowForgot(false)} className="text-xs text-neutral-400 hover:text-white">{t.cancel}</button>
           </div>
         </div>
       )}

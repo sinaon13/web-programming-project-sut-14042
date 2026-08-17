@@ -6,10 +6,12 @@ import { Track, User, Album } from '@/lib/types';
 import { adaptTrack } from '@/lib/adapters';
 import { useLanguage } from '@/context/LanguageContext';
 import { BackendOfflineBanner } from '@/components/ui/BackendOfflineBanner';
+import { useToast } from '@/components/ui/Toast';
 
 export default function ArtistPortalPage() {
   const { currentUser, updateUser } = useAuth();
   const { t } = useLanguage();
+  const { showToast } = useToast();
   const [title, setTitle] = useState('');
   const [album, setAlbum] = useState('');
   const [coverFile, setCoverFile] = useState<File | null>(null);
@@ -77,8 +79,8 @@ export default function ArtistPortalPage() {
 
   const handlePublishOrUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!title) return alert('Title is required');
-    if (!editingTrackId && !audioFile) return alert('Audio file is required for new tracks');
+    if (!title) return showToast(t.titleRequired, 'error');
+    if (!editingTrackId && !audioFile) return showToast(t.audioRequired, 'error');
 
     try {
       const formData = new FormData();
@@ -99,17 +101,17 @@ export default function ArtistPortalPage() {
         // PATCH existing track — no audio_file required for update
         await musicAPI.updateTrack(editingTrackId, formData);
         setEditingTrackId(null);
-        alert('✅ Track updated successfully!');
+        showToast(t.trackUpdated);
       } else {
         // POST new track — audio_file required
         await musicAPI.uploadTrack(formData);
-        alert('✅ Track published to database!');
+        showToast(t.trackPublished);
       }
 
       await refreshMyTracks();
       setTitle(''); setAlbum(''); setCoverFile(null); setLyrics(''); setCollaborators(''); setIsEarlyAccess(false); setAudioFile(null);
     } catch (err: any) {
-      alert(`Failed to publish: ${err.message || 'Unknown error'}`);
+      showToast(`${err.message || t.unknownError}`, 'error');
     }
   };
 
@@ -137,11 +139,11 @@ export default function ArtistPortalPage() {
     if (!confirm('Delete this track from the platform?')) return;
     try {
       await musicAPI.deleteTrack(trackId);
-      alert('✅ Track deleted from the platform.');
+      showToast(t.trackDeleted);
       if (editingTrackId === trackId) cancelEdit();
       await refreshMyTracks();
     } catch (err: any) {
-      alert(`Failed to delete: ${err.message || 'Unknown error'}`);
+      showToast(`${err.message || t.unknownError}`, 'error');
     }
   };
 
@@ -149,9 +151,9 @@ export default function ArtistPortalPage() {
     try {
       await authAPI.updateMe({ bio });
       updateUser({ bio });
-      alert('Biography updated successfully!');
+      showToast(t.bioUpdated);
     } catch (err: any) {
-      alert('Failed to update bio. Is the backend offline?');
+      showToast(t.backendOffline, 'error');
     }
   };
 

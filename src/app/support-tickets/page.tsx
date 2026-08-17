@@ -6,10 +6,12 @@ import { Ticket, AppNotification } from '@/lib/types';
 import { adaptTicket } from '@/lib/adapters';
 import { useLanguage } from '@/context/LanguageContext';
 import { BackendOfflineBanner } from '@/components/ui/BackendOfflineBanner';
+import { useToast } from '@/components/ui/Toast';
 
 export default function SupportTicketsPage() {
   const { currentUser } = useAuth();
   const { t } = useLanguage();
+  const { showToast } = useToast();
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [subject, setSubject] = useState('');
   const [message, setMessage] = useState('');
@@ -54,9 +56,9 @@ export default function SupportTicketsPage() {
       
       setSubject(''); setMessage('');
       setBackendOffline(false);
-      alert('✅ Support ticket submitted successfully! Staff has been notified.');
+      showToast(t.ticketSubmitted);
     } catch (err: any) {
-      alert('Backend offline. Cannot submit ticket.');
+      showToast(t.backendOffline, 'error');
     }
   };
 
@@ -90,8 +92,8 @@ export default function SupportTicketsPage() {
                   <span className="font-bold text-white text-sm">{tItem.subject}</span>
                 </div>
                 <div className="flex items-center gap-3">
-                  <span className="text-[11px] text-neutral-400">Priority: {tItem.priority}</span>
-                  {tItem.assignedTo && <span className="text-[11px] text-neutral-400">Assigned: {tItem.assignedTo}</span>}
+                  <span className="text-[11px] text-neutral-400">{t.priority}: {tItem.priority}</span>
+                  {tItem.assignedTo && <span className="text-[11px] text-neutral-400">{t.assignedTo} {tItem.assignedTo}</span>}
                   <span className="text-[11px] text-neutral-400">{t.sentAt} {tItem.createdAt}</span>
                   <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded ${tItem.status === 'OPEN' ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30' : 'bg-green-500/20 text-green-400 border border-green-500/30'}`}>{tItem.status}</span>
                 </div>
@@ -106,14 +108,14 @@ export default function SupportTicketsPage() {
               
               {tItem.status !== 'CLOSED' && (
                 <div className="mt-4 pt-4 border-t border-neutral-800 flex items-center space-x-2">
-                  <input type="text" id={`reply-${tItem.id}`} placeholder="Type your reply..." className="flex-1 p-2 bg-neutral-800 border border-neutral-700 rounded text-xs text-white" />
+                  <input type="text" id={`reply-${tItem.id}`} placeholder={t.replyPlaceholder} className="flex-1 p-2 bg-neutral-800 border border-neutral-700 rounded text-xs text-white" />
                   <button onClick={() => {
                     const el = document.getElementById(`reply-${tItem.id}`) as HTMLInputElement;
                     if (el && el.value.trim()) {
                       handleReply(tItem.id, el.value.trim());
                       el.value = '';
                     }
-                  }} className="px-4 py-2 bg-blue-500 hover:bg-blue-400 text-white font-bold rounded text-xs transition">Reply</button>
+                  }} className="px-4 py-2 bg-blue-500 hover:bg-blue-400 text-white font-bold rounded text-xs transition">{t.reply}</button>
                 </div>
               )}
             </div>

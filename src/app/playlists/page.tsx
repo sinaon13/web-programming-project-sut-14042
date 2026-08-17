@@ -6,6 +6,7 @@ import { Playlist, Track } from '@/lib/types';
 import { adaptPlaylist, adaptTrack } from '@/lib/adapters';
 import { usePlayer } from '@/context/PlayerContext';
 import { useLanguage } from '@/context/LanguageContext';
+import { useToast } from '@/components/ui/Toast';
 import { BackendOfflineBanner } from '@/components/ui/BackendOfflineBanner';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -13,7 +14,8 @@ import { useRouter } from 'next/navigation';
 export default function PlaylistsPage() {
   const { currentUser } = useAuth();
   const { playTrack } = usePlayer();
-  const { t } = useLanguage(); // Grabbed translations
+  const { t } = useLanguage();
+  const { showToast } = useToast(); // Grabbed translations
   const router = useRouter();
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
   const [name, setName] = useState('');
@@ -53,14 +55,14 @@ export default function PlaylistsPage() {
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (playlists.length >= maxPlaylists && maxPlaylists !== null) return alert(`Limit reached! Upgrade your tier to create more than ${maxPlaylists} playlists.`);
+    if (playlists.length >= maxPlaylists && maxPlaylists !== null) return showToast(t.playlistLimitReached, 'error');
     
     try {
       await playlistsAPI.createPlaylist(name);
       await refreshPlaylists();
       setName('');
     } catch (err: any) {
-      alert('Backend offline. Cannot create playlist.');
+      showToast(t.backendOffline, 'error');
     }
   };
 
@@ -72,7 +74,7 @@ export default function PlaylistsPage() {
       await playlistsAPI.updatePlaylist(plId, { title: newName.trim() } as any);
       await refreshPlaylists();
     } catch (err: any) {
-      alert('Backend offline. Cannot rename playlist.');
+      showToast(t.backendOffline, 'error');
     }
   };
 
@@ -82,7 +84,7 @@ export default function PlaylistsPage() {
       await playlistsAPI.deletePlaylist(plId);
       await refreshPlaylists();
     } catch (err: any) {
-      alert('Backend offline. Cannot delete playlist.');
+      showToast(t.backendOffline, 'error');
     }
   };
 
@@ -91,7 +93,7 @@ export default function PlaylistsPage() {
       await playlistsAPI.removeTrack(plId, trackId);
       await refreshPlaylists();
     } catch (err: any) {
-      alert('Backend offline. Cannot remove track from playlist.');
+      showToast(t.backendOffline, 'error');
     }
   };
 

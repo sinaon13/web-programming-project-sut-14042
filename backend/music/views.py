@@ -203,10 +203,106 @@ class TrackPlayView(APIView):
                 # 429 prevents audio playback in browser
                 return Response('Daily limit reached', status=status.HTTP_429_TOO_MANY_REQUESTS)
 
-        if not track.audio_file:
+        quality = request.GET.get('quality', 'high')
+        target_file = track.audio_file_128 if (quality == 'low' and track.audio_file_128) else track.audio_file
+
+        if not target_file:
             raise Http404('No audio file.')
 
-        return FileResponse(track.audio_file.open())
+        return self._ranged_response(request, target_file)
+
+    def _ranged_response(self, request, file_field):
+        import os
+        import re
+        from django.http import StreamingHttpResponse, HttpResponse
+
+        try:
+            file_path = file_field.path
+            file_size = os.path.getsize(file_path)
+        except Exception:
+            file_path = None
+            file_size = file_field.size
+
+        content_type = 'audio/mpeg'
+        range_header = request.META.get('HTTP_RANGE', '').strip()
+        range_match = re.match(r'bytes\s*=\s*(\d+)\s*-\s*(\d*)', range_header)
+
+        if range_match:
+            start_str, end_str = range_match.groups()
+            start = int(start_str) if start_str else 0
+            end = int(end_str) if end_str else file_size - 1
+
+            if start >= file_size or end >= file_size or start > end:
+                res = HttpResponse(status=416)
+                res['Content-Range'] = f'bytes */{file_size}'
+                return res
+
+            length = end - start + 1
+
+            def file_iterator():
+                if file_path and os.path.exists(file_path):
+                    with open(file_path, 'rb') as f:
+                        f.seek(start)
+                        remaining = length
+                        while remaining > 0:
+                            chunk_size = min(65536, remaining)
+                            data = f.read(chunk_size)
+                            if not data:
+                                break
+                            remaining -= len(data)
+                            yield data
+                else:
+                    f = file_field.open('rb')
+                    try:
+                        f.seek(start)
+                        remaining = length
+                        while remaining > 0:
+                            chunk_size = min(65536, remaining)
+                            data = f.read(chunk_size)
+                            if not data:
+                                break
+                            remaining -= len(data)
+                            yield data
+                    finally:
+                        f.close()
+
+            response = StreamingHttpResponse(
+                file_iterator(),
+                status=206,
+                content_type=content_type
+            )
+            response['Content-Range'] = f'bytes {start}-{end}/{file_size}'
+            response['Content-Length'] = str(length)
+            response['Accept-Ranges'] = 'bytes'
+            return response
+        else:
+            def file_iterator():
+                if file_path and os.path.exists(file_path):
+                    with open(file_path, 'rb') as f:
+                        while True:
+                            data = f.read(65536)
+                            if not data:
+                                break
+                            yield data
+                else:
+                    f = file_field.open('rb')
+                    try:
+                        while True:
+                            data = f.read(65536)
+                            if not data:
+                                break
+                            yield data
+                    finally:
+                        f.close()
+
+            response = StreamingHttpResponse(
+                file_iterator(),
+                status=200,
+                content_type=content_type
+            )
+            response['Content-Length'] = str(file_size)
+            response['Accept-Ranges'] = 'bytes'
+            return response
 
 
 # ---------------------------------------------------------------------------

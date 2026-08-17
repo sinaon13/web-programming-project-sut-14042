@@ -4,10 +4,12 @@ import { useAuth } from '@/context/AuthContext';
 import { authAPI } from '@/lib/api';
 import { useRef } from 'react';
 import { useLanguage } from '@/context/LanguageContext';
+import { useToast } from '@/components/ui/Toast';
 
 export default function ProfilePage() {
   const { currentUser, updateUser } = useAuth();
   const { t } = useLanguage();
+  const { showToast } = useToast();
   const [isEditingName, setIsEditingName] = useState(false);
   const [newName, setNewName] = useState(currentUser?.name || '');
 
