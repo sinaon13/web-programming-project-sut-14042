@@ -10,6 +10,7 @@ from rest_framework.permissions import IsAuthenticated, AllowAny, IsAdminUser
 from django.shortcuts import get_object_or_404
 from django.core.cache import cache
 
+from django.conf import settings
 from accounts.permissions import IsAdmin
 from .models import SubscriptionPlan, UserSubscription, Transaction
 from .utils import get_current_time
@@ -58,11 +59,21 @@ class PurchaseView(APIView):
 
     permission_classes = [IsAuthenticated]
 
-    # Zarinpal sandbox settings
-    ZARINPAL_REQUEST_URL = 'https://sandbox.zarinpal.com/pg/v4/payment/request.json'
-    ZARINPAL_STARTPAY_URL = 'https://sandbox.zarinpal.com/pg/StartPay/'
-    MERCHANT_ID = 'c8d2f8b6-07c1-496c-9f4c-f8e8afae1955'
-    CALLBACK_URL = 'http://localhost:3000/settings?payment=callback'
+    @property
+    def ZARINPAL_REQUEST_URL(self):
+        return getattr(settings, 'ZARINPAL_REQUEST_URL', 'https://sandbox.zarinpal.com/pg/v4/payment/request.json')
+
+    @property
+    def ZARINPAL_STARTPAY_URL(self):
+        return getattr(settings, 'ZARINPAL_STARTPAY_URL', 'https://sandbox.zarinpal.com/pg/StartPay/')
+
+    @property
+    def MERCHANT_ID(self):
+        return getattr(settings, 'ZARINPAL_MERCHANT_ID', 'c8d2f8b6-07c1-496c-9f4c-f8e8afae1955')
+
+    @property
+    def CALLBACK_URL(self):
+        return getattr(settings, 'ZARINPAL_CALLBACK_URL', 'http://localhost:3000/settings?payment=callback')
 
     def post(self, request):
         serializer = PurchaseSerializer(data=request.data)
@@ -144,8 +155,13 @@ class VerifyPaymentView(APIView):
 
     permission_classes = [IsAuthenticated]
 
-    ZARINPAL_VERIFY_URL = 'https://sandbox.zarinpal.com/pg/v4/payment/verify.json'
-    MERCHANT_ID = 'c8d2f8b6-07c1-496c-9f4c-f8e8afae1955'
+    @property
+    def ZARINPAL_VERIFY_URL(self):
+        return getattr(settings, 'ZARINPAL_VERIFY_URL', 'https://sandbox.zarinpal.com/pg/v4/payment/verify.json')
+
+    @property
+    def MERCHANT_ID(self):
+        return getattr(settings, 'ZARINPAL_MERCHANT_ID', 'c8d2f8b6-07c1-496c-9f4c-f8e8afae1955')
 
     def post(self, request):
         serializer = VerifyPaymentSerializer(data=request.data)

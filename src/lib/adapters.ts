@@ -56,8 +56,7 @@ export function adaptAlbum(raw: any): Album {
       ? ((raw.cover || raw.coverUrl).startsWith('/media/') ? `${BASE_HOST}${raw.cover || raw.coverUrl}` : (raw.cover || raw.coverUrl))
       : 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=300',
     releaseDate: raw.release_date || raw.releaseDate || '',
-    genre: raw.genre || '',
-    trackCount: raw.track_count || raw.trackCount || 0,
+    trackCount: raw.track_count ?? (Array.isArray(raw.tracks) ? raw.tracks.length : (raw.trackCount ?? 0)),
   };
 }
 

@@ -144,7 +144,7 @@ export const authAPI = {
 
   registerListener: async (payload: {
     email: string;
-    username: string;
+    username?: string;
     password: string;
     password_confirm: string;
     display_name?: string;
@@ -159,7 +159,7 @@ export const authAPI = {
 
   registerArtist: async (payload: {
     email: string;
-    username: string;
+    username?: string;
     password: string;
     password_confirm: string;
     display_name?: string;
@@ -460,8 +460,9 @@ export const subscriptionsAPI = {
 // ---------------------------------------------------------------------------
 
 export const notificationsAPI = {
-  getNotifications: async () => {
-    return apiCall<{ results: AppNotification[] }>('/notifications/');
+  getNotifications: async (params?: { is_read?: boolean }) => {
+    const query = params && params.is_read !== undefined ? `?is_read=${params.is_read}` : '';
+    return apiCall<{ results: AppNotification[] }>(`/notifications/${query}`);
   },
 
   markAsRead: async (id: string | number) => {

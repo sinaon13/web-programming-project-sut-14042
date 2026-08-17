@@ -53,7 +53,7 @@ export default function AlbumDetailPage() {
           <div className="flex items-center gap-3 text-xs text-neutral-400 pt-2">
             <span>📅 {album.releaseDate}</span>
             <span>•</span>
-            <span>🎵 {album.trackCount || 0} tracks</span>
+            <span>🎵 {album.trackCount || tracks.length || 0} tracks</span>
             {album.genre && <><span>•</span><span className="bg-neutral-800 px-2 py-0.5 rounded text-neutral-300">{album.genre}</span></>}
           </div>
         </div>

@@ -101,12 +101,16 @@ class AlbumDetailSerializer(serializers.ModelSerializer):
 
     artist = ArtistMiniSerializer(read_only=True)
     tracks = TrackSerializer(many=True, read_only=True)
+    track_count = serializers.SerializerMethodField()
 
     class Meta:
         model = Album
         fields = [
-            'id', 'title', 'artist', 'cover', 'release_date', 'genre', 'tracks',
+            'id', 'title', 'artist', 'cover', 'release_date', 'genre', 'tracks', 'track_count',
         ]
+
+    def get_track_count(self, obj):
+        return obj.tracks.count()
 
 
 class AlbumCreateSerializer(serializers.ModelSerializer):

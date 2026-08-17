@@ -16,9 +16,16 @@ import os
 SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-pm*#z)o72bg#8$&7=!cp6rv=0+6-pdnmx7q2)iscgo4#dh=lf!')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.environ.get('DEBUG', 'True') == 'True'
+DEBUG = os.environ.get('DEBUG', 'True').lower() in ('true', '1', 't')
 
-ALLOWED_HOSTS = ['*']
+ALLOWED_HOSTS = [h.strip() for h in os.environ.get('ALLOWED_HOSTS', '*').split(',') if h.strip()]
+
+# Zarinpal Gateway Settings
+ZARINPAL_MERCHANT_ID = os.environ.get('ZARINPAL_MERCHANT_ID', 'c8d2f8b6-07c1-496c-9f4c-f8e8afae1955')
+ZARINPAL_REQUEST_URL = os.environ.get('ZARINPAL_REQUEST_URL', 'https://sandbox.zarinpal.com/pg/v4/payment/request.json')
+ZARINPAL_STARTPAY_URL = os.environ.get('ZARINPAL_STARTPAY_URL', 'https://sandbox.zarinpal.com/pg/StartPay/')
+ZARINPAL_VERIFY_URL = os.environ.get('ZARINPAL_VERIFY_URL', 'https://sandbox.zarinpal.com/pg/v4/payment/verify.json')
+ZARINPAL_CALLBACK_URL = os.environ.get('ZARINPAL_CALLBACK_URL', 'http://localhost:3000/settings?payment=callback')
 
 
 # ---------------------------------------------------------------------------

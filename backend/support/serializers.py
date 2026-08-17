@@ -48,6 +48,14 @@ class TicketDetailSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ['id', 'user', 'created_at', 'updated_at']
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        request = self.context.get('request')
+        if request and hasattr(request, 'user') and request.user.role not in ('SUPPORT', 'ADMIN'):
+            self.fields['status'].read_only = True
+            self.fields['priority'].read_only = True
+            self.fields['assigned_to'].read_only = True
+
 
 class ArtistApprovalSerializer(serializers.ModelSerializer):
     """Serializer for artist approval / rejection (support/admin use)."""

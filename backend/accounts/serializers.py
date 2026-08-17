@@ -26,16 +26,19 @@ class RegisterSerializer(serializers.ModelSerializer):
         return attrs
 
     def create(self, validated_data):
-        import uuid
-        username = validated_data.get('username')
-        if not username:
-            username = f"user_{uuid.uuid4().hex[:8]}"
+        import re, uuid
+        base = validated_data.get('username') or validated_data['email'].split('@')[0]
+        clean_base = re.sub(r'[^a-zA-Z0-9_]', '', base) or 'user'
+        candidate = clean_base
+        while User.objects.filter(username=candidate).exists():
+            candidate = f"{clean_base}_{uuid.uuid4().hex[:4]}"
+        username = candidate
             
         user = User.objects.create_user(
             email=validated_data['email'],
             username=username,
             password=validated_data['password'],
-            display_name=validated_data.get('display_name', ''),
+            display_name=validated_data.get('display_name', '') or username,
             birth_date=validated_data.get('birth_date'),
             gender=validated_data.get('gender'),
             role=User.Role.LISTENER,
@@ -66,16 +69,19 @@ class ArtistRegisterSerializer(serializers.ModelSerializer):
         return attrs
 
     def create(self, validated_data):
-        import uuid
-        username = validated_data.get('username')
-        if not username:
-            username = f"artist_{uuid.uuid4().hex[:8]}"
+        import re, uuid
+        base = validated_data.get('username') or validated_data.get('display_name') or validated_data['email'].split('@')[0]
+        clean_base = re.sub(r'[^a-zA-Z0-9_]', '', base) or 'artist'
+        candidate = clean_base
+        while User.objects.filter(username=candidate).exists():
+            candidate = f"{clean_base}_{uuid.uuid4().hex[:4]}"
+        username = candidate
             
         user = User.objects.create_user(
             email=validated_data['email'],
             username=username,
             password=validated_data['password'],
-            display_name=validated_data.get('display_name', ''),
+            display_name=validated_data.get('display_name', '') or username,
             birth_date=validated_data.get('birth_date'),
             gender=validated_data.get('gender'),
             bio=validated_data.get('bio', ''),
